@@ -22,6 +22,9 @@ time, saved queries, run history, EXPLAIN, and a share link.
 
 </details>
 
+<sub>Every screenshot runs against the fictional demo database in
+[`art/demo-data.sql`](art/demo-data.sql) — no real company or person appears in them.</sub>
+
 ## Requirements — read these first
 
 This package is deliberately narrow. If any of these do not hold, it will not work, and it says so rather than
@@ -131,6 +134,8 @@ typed confirmation**, whatever `confirm_writes` says, because it is one irrevers
 mode badge. A read-only connection sits next to a writable one without either being able to affect the other.
 
 ## Safety model
+
+![A DELETE rejected by the guard on a read-only connection](https://raw.githubusercontent.com/phattarachai/laravel-db-console/main/art/sql-guard.png)
 
 Layered, so no single check is load-bearing:
 
