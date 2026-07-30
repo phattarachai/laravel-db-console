@@ -17,6 +17,9 @@ return [
     'toolbar.modeWrite' => 'เขียนได้',
     'toolbar.switchConnection' => 'สลับการเชื่อมต่อ',
     'toolbar.home' => 'กลับไปหน้าหลัก',
+    'toolbar.schemeLight' => 'ธีมสว่าง · คลิกเพื่อใช้ธีมมืด',
+    'toolbar.schemeDark' => 'ธีมมืด · คลิกเพื่อใช้ตามแอป',
+    'toolbar.schemeAuto' => 'ใช้ธีมตามแอป · คลิกเพื่อใช้ธีมสว่าง',
 
     'explorer.selectTable' => 'เลือกตารางจากแถบด้านข้างเพื่อดูข้อมูล',
 

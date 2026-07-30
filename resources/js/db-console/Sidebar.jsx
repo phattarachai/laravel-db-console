@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
 
-import { ChevronIcon, ColumnIcon, DatabaseIcon, KeyIcon, SearchIcon, TableIcon, ViewIcon } from './icons'
+import {
+  ChevronIcon,
+  ColumnIcon,
+  DatabaseIcon,
+  KeyIcon,
+  SearchIcon,
+  TableIcon,
+  ViewIcon,
+} from './icons'
 import { compactCount, cx } from './lib'
 import { useStrings } from './strings'
 

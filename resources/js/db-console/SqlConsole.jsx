@@ -13,7 +13,7 @@ import {
   SaveIcon,
   TerminalIcon,
   TrashIcon,
-  WandIcon
+  WandIcon,
 } from './icons'
 import { classifySql, formatSql } from './sql-lib'
 import { cx, HISTORY_LIMIT } from './lib'

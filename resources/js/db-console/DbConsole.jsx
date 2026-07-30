@@ -2,9 +2,17 @@ import { useMemo, useRef, useState } from 'react'
 
 import { ConnectionPicker } from './ConnectionPicker'
 import { DataGrid } from './DataGrid'
-import { AlertIcon, MenuIcon, TableIcon, TerminalIcon } from './icons'
+import {
+  AlertIcon,
+  MenuIcon,
+  MonitorIcon,
+  MoonIcon,
+  SunIcon,
+  TableIcon,
+  TerminalIcon,
+} from './icons'
 import './db-console.css'
-import { cx, readConsoleMode, writeConsoleMode } from './lib'
+import { cx, readConsoleMode, readScheme, SCHEMES, writeConsoleMode, writeScheme } from './lib'
 import { Sidebar } from './Sidebar'
 import { SqlConsole } from './SqlConsole'
 import { DEFAULT_STRINGS, StringsContext, useStrings } from './strings'
@@ -143,7 +151,17 @@ function Console({
     }
     return sql ? readConsoleMode() : 'explorer'
   })
+  // `brand.scheme` is only the default: once the viewer picks one it is theirs,
+  // kept in localStorage rather than on the server, exactly like the grid's
+  // column widths — a preference of this browser, not of the installation.
+  const [scheme, setScheme] = useState(() => readScheme() ?? brand?.scheme ?? 'auto')
   const editorRef = useRef(null)
+
+  const cycleScheme = () => {
+    const next = SCHEMES[(SCHEMES.indexOf(scheme) + 1) % SCHEMES.length]
+    setScheme(next)
+    writeScheme(next)
+  }
 
   const currentSchemaName = useMemo(() => {
     if (!selected) {
@@ -183,8 +201,10 @@ function Console({
     <div
       className={cx(
         'dc-root tw:flex tw:h-screen tw:flex-col tw:font-sans',
-        // 'auto' → leave it to the host app's own `.dark` ancestor.
-        brand?.scheme === 'dark' && 'dark',
+        // 'auto' → leave it to the host app's own `.dark` ancestor. 'light' is
+        // stamped too, so it can override a host that is itself dark.
+        scheme === 'dark' && 'dark',
+        scheme === 'light' && 'light',
       )}
       style={rootStyle}
     >
@@ -209,6 +229,8 @@ function Console({
         />
 
         <div className="tw:ml-auto tw:flex tw:items-center tw:gap-3">
+          <SchemeToggle scheme={scheme} onCycle={cycleScheme} />
+
           {sql && !fatalMessage && (
             <div className="tw:flex tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:p-0.5">
               <ModeButton
@@ -311,6 +333,35 @@ function Console({
         </div>
       )}
     </div>
+  )
+}
+
+const SCHEME_ICONS = { light: SunIcon, dark: MoonIcon, auto: MonitorIcon }
+const SCHEME_HINTS = {
+  light: 'toolbar.schemeLight',
+  dark: 'toolbar.schemeDark',
+  auto: 'toolbar.schemeAuto',
+}
+
+/**
+ * One button cycling light → dark → auto. It shows the scheme currently in
+ * force, and its tooltip names both that and what a click will do.
+ */
+function SchemeToggle({ scheme, onCycle }) {
+  const t = useStrings()
+  const Icon = SCHEME_ICONS[scheme] ?? MonitorIcon
+  const hint = t(SCHEME_HINTS[scheme] ?? SCHEME_HINTS.auto)
+
+  return (
+    <button
+      type="button"
+      onClick={onCycle}
+      title={hint}
+      aria-label={hint}
+      className="tw:rounded tw:p-1.5 tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]"
+    >
+      <Icon className="tw:h-4 tw:w-4" />
+    </button>
   )
 }
 

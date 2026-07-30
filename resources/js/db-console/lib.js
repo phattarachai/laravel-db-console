@@ -183,6 +183,42 @@ function writeJson(key, value) {
   }
 }
 
+/** localStorage key for the viewer's colour-scheme override. */
+const SCHEME_KEY = 'dc.scheme.v1'
+
+/** @type {ReadonlyArray<'light'|'dark'|'auto'>} the toggle's cycle order. */
+export const SCHEMES = ['light', 'dark', 'auto']
+
+/**
+ * The viewer's own scheme choice, which outranks `brand.scheme` from the server.
+ *
+ * @returns {'light'|'dark'|'auto'|null} null when they have never chosen, so the
+ *   configured default still applies.
+ */
+export function readScheme() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  try {
+    const raw = window.localStorage.getItem(SCHEME_KEY)
+    return SCHEMES.includes(raw) ? raw : null
+  } catch {
+    return null
+  }
+}
+
+/** Persist the viewer's scheme choice (no-op if storage is unavailable). */
+export function writeScheme(scheme) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem(SCHEME_KEY, scheme)
+  } catch {
+    // Storage disabled / full — the choice lasts for this session only.
+  }
+}
+
 /**
  * Read the console mode from the URL (`?mode=sql`). Defaults to `explorer`.
  * Lets a refresh / shared link restore the Table-vs-SQL view.

@@ -44,8 +44,10 @@
 }
 
 /* Two selectors on purpose: the host app's own `.dark` ancestor drives `scheme:
-   auto`, while `scheme: light|dark` stamps the class on `.dc-root` itself. */
-.dark .dc-root,
+   auto`, while `scheme: light|dark` stamps the class on `.dc-root` itself. The
+   `:not(.light)` is what lets the toolbar's toggle force light inside a host app
+   that is itself dark — without it the ancestor would always win. */
+.dark .dc-root:not(.light),
 .dc-root.dark {
   --dc-bg: #17181f;
   --dc-surface: #1b1c24;

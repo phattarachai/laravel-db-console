@@ -17,6 +17,9 @@ return [
     'toolbar.modeWrite' => 'Writable',
     'toolbar.switchConnection' => 'Switch connection',
     'toolbar.home' => 'Back to the app',
+    'toolbar.schemeLight' => 'Light — click for dark',
+    'toolbar.schemeDark' => 'Dark — click to follow the app',
+    'toolbar.schemeAuto' => 'Following the app — click for light',
 
     'explorer.selectTable' => 'Pick a table from the sidebar to view its data',
 
