@@ -1,0 +1,141 @@
+/*
+ * Database Console — self-contained theme tokens.
+ *
+ * The whole module is coloured through these `--dc-*` variables so it can be
+ * re-themed in any project by overriding them (customizable color). Defaults
+ * below track the RR/OS brand (Forge Red accent, Steel Mist / Black Onyx
+ * surfaces) and follow the app's `.dark` class for dark mode.
+ *
+ * To re-skin: set `--dc-accent` (and any surface token) on `.dc-root` or a parent.
+ */
+
+.dc-root {
+  --dc-bg: #ffffff;
+  --dc-surface: #f7f7fa;
+  --dc-sidebar: #ededf1;
+  --dc-toolbar: #f7f7fa;
+  --dc-header: #ebebf2;
+  --dc-border: #d7d7e0;
+  --dc-hover: #e6e6ee;
+  --dc-active: #dcdce6;
+  --dc-text: #1e1f28;
+  --dc-text-muted: #6b6880;
+  --dc-text-faint: #9a97ad;
+  --dc-accent: #cb3638;
+  --dc-accent-foreground: #ffffff;
+  --dc-accent-soft: rgba(203, 54, 56, 0.1);
+  --dc-table-icon: #665e84;
+  --dc-view-icon: #2f8f6b;
+  --dc-key: #b07d19;
+  --dc-null: #b0adbf;
+
+  /* SQL editor (mode 2) */
+  --dc-editor-bg: #fbfbfd;
+  --dc-editor-gutter: #f0f0f5;
+  --dc-editor-caret: #cb3638;
+  --dc-syntax-keyword: #7a3fb0;
+  --dc-syntax-string: #2f8f6b;
+  --dc-syntax-number: #b07d19;
+  --dc-syntax-comment: #9a97ad;
+
+  color: var(--dc-text);
+  background: var(--dc-bg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two selectors on purpose: the host app's own `.dark` ancestor drives `scheme:
+   auto`, while `scheme: light|dark` stamps the class on `.dc-root` itself. */
+.dark .dc-root,
+.dc-root.dark {
+  --dc-bg: #17181f;
+  --dc-surface: #1b1c24;
+  --dc-sidebar: #1e1f28;
+  --dc-toolbar: #1b1c24;
+  --dc-header: #23242e;
+  --dc-border: #33313d;
+  --dc-hover: #262632;
+  --dc-active: #2f2c3b;
+  --dc-text: #ededf1;
+  --dc-text-muted: #9a95ad;
+  --dc-text-faint: #6c6880;
+  --dc-accent: #ff5a63;
+  --dc-accent-foreground: #ffffff;
+  --dc-accent-soft: rgba(255, 90, 99, 0.14);
+  --dc-table-icon: #aca8c1;
+  --dc-view-icon: #4cc38a;
+  --dc-key: #d9a441;
+  --dc-null: #5c5870;
+
+  --dc-editor-bg: #141520;
+  --dc-editor-gutter: #1b1c26;
+  --dc-editor-caret: #ff5a63;
+  --dc-syntax-keyword: #c8a6ff;
+  --dc-syntax-string: #4cc38a;
+  --dc-syntax-number: #d9a441;
+  --dc-syntax-comment: #6c6880;
+}
+
+/*
+ * SQL editor: a highlight <pre> sits behind a transparent <textarea>. Both share
+ * these metrics EXACTLY so the caret lands on the coloured text. Change one →
+ * change both.
+ */
+.dc-editor-layer {
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 20px;
+  tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  letter-spacing: normal;
+}
+.dc-editor-input {
+  color: transparent;
+  background: transparent;
+  caret-color: var(--dc-editor-caret);
+  resize: none;
+  outline: none;
+}
+.dc-editor-input::selection {
+  background: color-mix(in srgb, var(--dc-accent) 28%, transparent);
+}
+.dc-editor-highlight {
+  pointer-events: none;
+  color: var(--dc-text);
+}
+.dc-tok-keyword {
+  color: var(--dc-syntax-keyword);
+  font-weight: 600;
+}
+.dc-tok-string {
+  color: var(--dc-syntax-string);
+}
+.dc-tok-number {
+  color: var(--dc-syntax-number);
+}
+.dc-tok-comment {
+  color: var(--dc-syntax-comment);
+  font-style: italic;
+}
+
+/* Thin, unobtrusive scrollbars inside the tool. */
+.dc-root ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dc-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dc-root ::-webkit-scrollbar-thumb {
+  background: var(--dc-border);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.dc-root ::-webkit-scrollbar-thumb:hover {
+  background: var(--dc-text-faint);
+  background-clip: content-box;
+}
