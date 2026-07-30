@@ -6,6 +6,22 @@ Adminer next to every project.
 Read-only by default. Writes are opt-in per connection, a row delete always asks before it runs, and **DDL is never
 allowed in any mode**.
 
+![The explorer: schema tree, resizable columns, live data](https://raw.githubusercontent.com/phattarachai/laravel-db-console/main/art/explorer.png)
+
+<details>
+<summary><b>More screenshots</b> — SQL console, dark scheme</summary>
+
+**SQL console** — editor with highlighting and a formatter, a read/write guard chip, results with row count and elapsed
+time, saved queries, run history, EXPLAIN, and a share link.
+
+![The SQL console with a query and its results](https://raw.githubusercontent.com/phattarachai/laravel-db-console/main/art/sql-console.png)
+
+**Dark scheme** — `brand.scheme` set to `dark`; `auto` follows a `.dark` ancestor class from the host app.
+
+![The same explorer in the dark scheme](https://raw.githubusercontent.com/phattarachai/laravel-db-console/main/art/dark.png)
+
+</details>
+
 ## Requirements — read these first
 
 This package is deliberately narrow. If any of these do not hold, it will not work, and it says so rather than
