@@ -207,7 +207,9 @@ override:
 ```
 
 Dark mode follows a `.dark` ancestor class, matching the Tailwind convention. `brand.scheme` may be `light`, `dark`, or
-`auto` to follow the host.
+`auto` to follow the host — but it is only the **default**: a toolbar button cycles light → dark → auto and remembers
+the viewer's choice in `localStorage`, so the theme is a preference of that browser rather than of the installation.
+`light` wins even inside a host app that is itself dark.
 
 ## Translations
 
