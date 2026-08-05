@@ -1,0 +1,31 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$array \(list\<Phattarachai\\DbConsole\\Support\\Connection\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Support/Connection.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, name\: string, sql\: string, connection\: string\}, Closure\(Phattarachai\\DbConsole\\Models\\SavedQuery\)\: array\{id\: int, name\: string, sql\: string, connection\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/QueryStore.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, sql\: string, connection\: string, rows\: int\|null, elapsedMs\: int, status\: string, at\: string\}, Closure\(Phattarachai\\DbConsole\\Models\\HistoryEntry\)\: array\{id\: int, sql\: string, connection\: string, rows\: int\|null, elapsedMs\: int, status\: string, at\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/QueryStore.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\<string, mixed\>\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: src/Support/Redactor.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>estimate" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Support/SchemaInspector.php

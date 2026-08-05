@@ -1,5 +1,12 @@
 # Laravel DB Console
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/phattarachai/laravel-db-console.svg?style=flat-square)](https://packagist.org/packages/phattarachai/laravel-db-console)
+[![Tests](https://img.shields.io/github/actions/workflow/status/phattarachai/laravel-db-console/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/phattarachai/laravel-db-console/actions/workflows/run-tests.yml?query=branch%3Amain)
+[![Code Style](https://img.shields.io/github/actions/workflow/status/phattarachai/laravel-db-console/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/phattarachai/laravel-db-console/actions/workflows/fix-php-code-style-issues.yml?query=branch%3Amain)
+[![PHP Version](https://img.shields.io/packagist/dependency-v/phattarachai/laravel-db-console/php?style=flat-square&label=php&logo=php&logoColor=white)](https://packagist.org/packages/phattarachai/laravel-db-console)
+![Laravel Version](https://img.shields.io/badge/laravel-11%20%7C%2012%20%7C%2013-FF2D20?style=flat-square&logo=laravel&logoColor=white)
+[![Total Downloads](https://img.shields.io/packagist/dt/phattarachai/laravel-db-console.svg?style=flat-square)](https://packagist.org/packages/phattarachai/laravel-db-console)
+
 An in-app web DB client for Laravel — browse your tables and run guarded SQL in the browser, instead of installing
 Adminer next to every project.
 
