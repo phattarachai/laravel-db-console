@@ -27,34 +27,34 @@ final class DoctorCommand extends Command
         $failures = 0;
 
         $failures += $this->check('Console enabled',
-            fn(): ?string => config('db-console.enabled') ? null : 'db-console.enabled is false, so no routes are registered.');
+            fn (): ?string => config('db-console.enabled') ? null : 'db-console.enabled is false, so no routes are registered.');
 
         $failures += $this->check('Routes registered',
-            fn(): ?string => Route::has('db-console.index') ? null : 'Route [db-console.index] is missing.');
+            fn (): ?string => Route::has('db-console.index') ? null : 'Route [db-console.index] is missing.');
 
-        foreach (array_keys((array)config('db-console.connections', [])) as $key) {
-            $failures += $this->check("Connection [{$key}]", fn(): ?string => $this->connection((string)$key));
+        foreach (array_keys((array) config('db-console.connections', [])) as $key) {
+            $failures += $this->check("Connection [{$key}]", fn (): ?string => $this->connection((string) $key));
         }
 
         $failures += $this->check('Tables migrated',
-            fn(): ?string => Schema::hasTable('db_console_queries') && Schema::hasTable('db_console_history') && Schema::hasTable('db_console_shares')
+            fn (): ?string => Schema::hasTable('db_console_queries') && Schema::hasTable('db_console_history') && Schema::hasTable('db_console_shares')
                 ? null
                 : 'Run `php artisan migrate` — the db_console_* tables are missing.');
 
-        $failures += $this->check('Inertia page published', fn(): ?string => file_exists(resource_path('js/pages/DbConsole.jsx'))
+        $failures += $this->check('Inertia page published', fn (): ?string => file_exists(resource_path('js/pages/DbConsole.jsx'))
             ? null
             : 'Run `php artisan vendor:publish --tag=db-console-inertia`.');
 
-        $failures += $this->check('Vite alias @db-console', fn(): ?string => $this->fileContains(base_path('vite.config.js'), '@db-console')
+        $failures += $this->check('Vite alias @db-console', fn (): ?string => $this->fileContains(base_path('vite.config.js'), '@db-console')
             ? null
             : 'Add a resolve.alias entry for @db-console — see the package README.');
 
-        $failures += $this->check('Tailwind prefix(tw)', fn(): ?string => $this->fileContains(resource_path('css/app.css'), 'prefix(tw)')
+        $failures += $this->check('Tailwind prefix(tw)', fn (): ?string => $this->fileContains(resource_path('css/app.css'), 'prefix(tw)')
             ? null
             : "The module's markup needs `@import 'tailwindcss' prefix(tw);` in your Tailwind entry CSS.");
 
         $failures += $this->check('Tailwind @source for the package',
-            fn(): ?string => $this->fileContains(resource_path('css/app.css'), 'laravel-db-console')
+            fn (): ?string => $this->fileContains(resource_path('css/app.css'), 'laravel-db-console')
                 ? null
                 : 'Add an @source line covering the package JSX, or Tailwind will emit none of its classes.');
 
@@ -72,7 +72,7 @@ final class DoctorCommand extends Command
     }
 
     /**
-     * @param callable(): (string|null) $check
+     * @param  callable(): (string|null)  $check
      */
     private function check(string $label, callable $check): int
     {
@@ -108,6 +108,6 @@ final class DoctorCommand extends Command
 
     private function fileContains(string $path, string $needle): bool
     {
-        return file_exists($path) && str_contains((string)file_get_contents($path), $needle);
+        return file_exists($path) && str_contains((string) file_get_contents($path), $needle);
     }
 }

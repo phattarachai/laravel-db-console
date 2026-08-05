@@ -18,15 +18,15 @@ final class DbConsoleServiceProvider extends ServiceProvider
     #[Override]
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/db-console.php', 'db-console');
+        $this->mergeConfigFrom(__DIR__.'/../config/db-console.php', 'db-console');
     }
 
     public function boot(): void
     {
-        $this->loadTranslationsFrom(__DIR__ . '/../lang', 'db-console');
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'db-console');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
-        if ((bool)config('db-console.enabled', default: true)) {
+        if ((bool) config('db-console.enabled', default: true)) {
             $this->registerRoutes();
         }
 
@@ -42,30 +42,30 @@ final class DbConsoleServiceProvider extends ServiceProvider
         Route::group([
             'domain' => config('db-console.domain'),
             'prefix' => config('db-console.path', 'db-console'),
-            'middleware' => [...(array)config('db-console.middleware', ['web']), ApplyLocale::class, Authorize::class],
+            'middleware' => [...(array) config('db-console.middleware', ['web']), ApplyLocale::class, Authorize::class],
             'as' => 'db-console.',
-        ], fn() => $this->loadRoutesFrom(__DIR__ . '/../routes/web.php'));
+        ], fn () => $this->loadRoutesFrom(__DIR__.'/../routes/web.php'));
     }
 
     private function registerPublishing(): void
     {
         $this->publishes([
-            __DIR__ . '/../config/db-console.php' => config_path('db-console.php'),
+            __DIR__.'/../config/db-console.php' => config_path('db-console.php'),
         ], 'db-console-config');
 
         $this->publishes([
-            __DIR__ . '/../database/migrations' => database_path('migrations'),
+            __DIR__.'/../database/migrations' => database_path('migrations'),
         ], 'db-console-migrations');
 
         $this->publishes([
-            __DIR__ . '/../lang' => lang_path('vendor/db-console'),
+            __DIR__.'/../lang' => lang_path('vendor/db-console'),
         ], 'db-console-lang');
 
         // Only the page needs to live in the host tree — `app.jsx`'s import.meta.glob
         // never leaves ./pages. The module itself is reached through the
         // `@db-console` Vite alias, so there is no second copy to drift.
         $this->publishes([
-            __DIR__ . '/../resources/js/pages/DbConsole.jsx' => resource_path('js/pages/DbConsole.jsx'),
+            __DIR__.'/../resources/js/pages/DbConsole.jsx' => resource_path('js/pages/DbConsole.jsx'),
         ], 'db-console-inertia');
     }
 

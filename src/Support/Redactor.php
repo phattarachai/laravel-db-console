@@ -16,9 +16,7 @@ final readonly class Redactor
 {
     public const string MASK = '***';
 
-    public function __construct(private Connection $connection)
-    {
-    }
+    public function __construct(private Connection $connection) {}
 
     public function isHiddenTable(string $table): bool
     {
@@ -41,7 +39,7 @@ final readonly class Redactor
     }
 
     /**
-     * @param list<array<string, mixed>> $rows
+     * @param  list<array<string, mixed>>  $rows
      * @return list<array<string, mixed>>
      */
     public function maskRows(array $rows): array
@@ -50,7 +48,7 @@ final readonly class Redactor
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
     public function maskRow(array $row): array
@@ -58,23 +56,23 @@ final readonly class Redactor
         $masked = [];
 
         foreach ($row as $column => $value) {
-            $masked[$column] = ($value !== null && $this->isMaskedColumn((string)$column)) ? self::MASK : $value;
+            $masked[$column] = ($value !== null && $this->isMaskedColumn((string) $column)) ? self::MASK : $value;
         }
 
         return $masked;
     }
 
     /**
-     * @param list<string> $names
+     * @param  list<string>  $names
      * @return list<string>
      */
     public function visibleTables(array $names): array
     {
-        return array_values(array_filter($names, fn(string $name): bool => !$this->isHiddenTable($name)));
+        return array_values(array_filter($names, fn (string $name): bool => ! $this->isHiddenTable($name)));
     }
 
     /**
-     * @param list<string> $patterns
+     * @param  list<string>  $patterns
      */
     private function matches(array $patterns, string $value): bool
     {

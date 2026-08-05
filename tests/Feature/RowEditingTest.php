@@ -14,7 +14,7 @@ it('refuses to edit a row on a read-only connection', function (): void {
     $connection = Connection::resolve();
     $writer = new RowWriter($connection, new SchemaInspector($connection));
 
-    expect(fn() => $writer->apply('public', 'dc_owners', 'update', ['id' => 1], ['name' => 'nope']))
+    expect(fn () => $writer->apply('public', 'dc_owners', 'update', ['id' => 1], ['name' => 'nope']))
         ->toThrow(SqlGuardException::class);
 });
 
@@ -23,7 +23,7 @@ it('refuses to write a masked column', function (): void {
     $connection = dcWritable();
     $writer = new RowWriter($connection, new SchemaInspector($connection));
 
-    expect(fn() => $writer->apply('public', 'dc_owners', 'update', ['id' => $owner->id], ['secret_token' => 'x']))
+    expect(fn () => $writer->apply('public', 'dc_owners', 'update', ['id' => $owner->id], ['secret_token' => 'x']))
         ->toThrow(SqlGuardException::class);
 });
 
@@ -56,7 +56,7 @@ it('still confirms a row delete even when confirm_writes is off', function (): v
             'pk' => ['id' => $itemId],
         ])
         ->assertStatus(409)
-        ->assertJsonPath('confirm.statement', fn(string $sql): bool => str_contains($sql, 'delete'));
+        ->assertJsonPath('confirm.statement', fn (string $sql): bool => str_contains($sql, 'delete'));
 
     expect(DB::table('dc_items')->where('id', $itemId)->exists())->toBeTrue();
 

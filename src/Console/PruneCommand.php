@@ -28,8 +28,8 @@ final class PruneCommand extends Command
 
     public function handle(): int
     {
-        $keepDays = (int)config('db-console.history.keep_days', 30);
-        $keepRows = (int)config('db-console.history.keep_rows', 500);
+        $keepDays = (int) config('db-console.history.keep_days', 30);
+        $keepRows = (int) config('db-console.history.keep_rows', 500);
 
         $byAge = $this->pruneHistoryByAge($keepDays);
         $this->line("History older than {$keepDays} days: {$byAge} row(s) deleted.");
@@ -51,7 +51,7 @@ final class PruneCommand extends Command
 
         $cutoff = Date::now()->subDays($keepDays);
 
-        return $this->deleteInChunks(fn(): Builder => HistoryEntry::query()
+        return $this->deleteInChunks(fn (): Builder => HistoryEntry::query()
             ->whereNotNull('created_at')
             ->where('created_at', '<', $cutoff));
     }
@@ -84,7 +84,7 @@ final class PruneCommand extends Command
             ->whereNotNull('user_id')
             ->distinct()
             ->pluck('user_id')
-            ->map(fn(mixed $userId): Closure => fn(Builder $query): Builder => $query->where('user_id', $userId))
+            ->map(fn (mixed $userId): Closure => fn (Builder $query): Builder => $query->where('user_id', $userId))
             ->all();
 
         $sessionBuckets = HistoryEntry::query()
@@ -92,7 +92,7 @@ final class PruneCommand extends Command
             ->whereNotNull('session_id')
             ->distinct()
             ->pluck('session_id')
-            ->map(fn(mixed $sessionId): Closure => fn(Builder $query): Builder => $query
+            ->map(fn (mixed $sessionId): Closure => fn (Builder $query): Builder => $query
                 ->whereNull('user_id')
                 ->where('session_id', $sessionId))
             ->all();
@@ -101,7 +101,7 @@ final class PruneCommand extends Command
     }
 
     /**
-     * @param Closure(Builder): Builder $bucket
+     * @param  Closure(Builder): Builder  $bucket
      */
     private function trimBucket(Closure $bucket, int $keepRows): int
     {
@@ -115,7 +115,7 @@ final class PruneCommand extends Command
             return 0;
         }
 
-        return $this->deleteInChunks(fn(): Builder => $bucket(HistoryEntry::query())
+        return $this->deleteInChunks(fn (): Builder => $bucket(HistoryEntry::query())
             ->where('id', '<=', $cutoff));
     }
 
@@ -123,7 +123,7 @@ final class PruneCommand extends Command
     {
         $now = Date::now();
 
-        return $this->deleteInChunks(fn(): Builder => SharedQuery::query()
+        return $this->deleteInChunks(fn (): Builder => SharedQuery::query()
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', $now));
     }
@@ -132,7 +132,7 @@ final class PruneCommand extends Command
      * Deletes by explicit key batches: Postgres has no `DELETE ... LIMIT`, so a
      * limited builder would silently delete the whole match in one statement.
      *
-     * @param Closure(): Builder $filtered a fresh, filtered query per pass
+     * @param  Closure(): Builder  $filtered  a fresh, filtered query per pass
      */
     private function deleteInChunks(Closure $filtered): int
     {

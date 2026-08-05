@@ -37,7 +37,7 @@ final class ConfirmToken
 
         $stored = Cache::get($this->cacheKey($token));
 
-        if (!is_string($stored) || !hash_equals($stored, $this->fingerprint($token, $connectionKey, $sql))) {
+        if (! is_string($stored) || ! hash_equals($stored, $this->fingerprint($token, $connectionKey, $sql))) {
             return false;
         }
 
@@ -48,7 +48,7 @@ final class ConfirmToken
 
     private function cacheKey(string $token): string
     {
-        return 'db-console:confirm:' . $token;
+        return 'db-console:confirm:'.$token;
     }
 
     private function fingerprint(string $token, string $connectionKey, string $sql): string
@@ -64,6 +64,6 @@ final class ConfirmToken
     {
         $id = auth()->id();
 
-        return $id === null ? 'session:' . Session::getId() : 'user:' . $id;
+        return $id === null ? 'session:'.Session::getId() : 'user:'.$id;
     }
 }

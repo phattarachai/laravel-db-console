@@ -43,9 +43,7 @@ final readonly class SqlGuard
         'refresh',
     ];
 
-    public function __construct(private Connection $connection)
-    {
-    }
+    public function __construct(private Connection $connection) {}
 
     /**
      * @return 'read'|'write'
@@ -62,7 +60,7 @@ final readonly class SqlGuard
             throw new SqlGuardException(__('db-console::guard.single_statement'));
         }
 
-        if (!preg_match('/^\s*([a-zA-Z_]+)/', $stripped, $matches)) {
+        if (! preg_match('/^\s*([a-zA-Z_]+)/', $stripped, $matches)) {
             throw new SqlGuardException(__('db-console::guard.must_start'));
         }
 
@@ -83,7 +81,7 @@ final readonly class SqlGuard
         }
 
         if (in_array($keyword, self::DML_KEYWORDS, strict: true)) {
-            if (!$this->connection->isWritable()) {
+            if (! $this->connection->isWritable()) {
                 throw new SqlGuardException(__('db-console::guard.read_only', ['keyword' => $upper]));
             }
 
@@ -104,7 +102,7 @@ final readonly class SqlGuard
      */
     private function assertNoHiddenTable(string $sql): void
     {
-        if (!preg_match_all('/[a-zA-Z_][a-zA-Z0-9_$]*/', $this->identifiersOf($sql), $matches)) {
+        if (! preg_match_all('/[a-zA-Z_][a-zA-Z0-9_$]*/', $this->identifiersOf($sql), $matches)) {
             return;
         }
 

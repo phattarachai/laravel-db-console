@@ -26,7 +26,7 @@ it('forbids a guest XHR rather than redirecting it', function (): void {
 });
 
 it('forbids a signed-in user the gate rejects, without looping back to login', function (): void {
-    DbConsole::auth(fn(): bool => false);
+    DbConsole::auth(fn (): bool => false);
 
     actingAs(dcUser())
         ->get(route('db-console.index'))

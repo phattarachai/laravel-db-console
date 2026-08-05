@@ -31,8 +31,7 @@ final class DbConsoleController extends Controller
     public function __construct(
         private readonly QueryStore $store,
         private readonly ConfirmToken $confirm,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -57,7 +56,7 @@ final class DbConsoleController extends Controller
      */
     public function query(Request $request): JsonResponse
     {
-        $sql = (string)$request->input('sql', '');
+        $sql = (string) $request->input('sql', '');
 
         try {
             $connection = $this->connection($request);
@@ -73,11 +72,11 @@ final class DbConsoleController extends Controller
                 ? count($result['rows'])
                 : ($result['rowsAffected'] ?? null);
 
-            $this->store->record($connection->key, $sql, $rows, (int)$result['elapsedMs'], 'ok');
+            $this->store->record($connection->key, $sql, $rows, (int) $result['elapsedMs'], 'ok');
 
             return response()->json($result);
         } catch (SqlGuardException $exception) {
-            $this->store->record((string)$request->input('connection', 'default'), $sql, rows: null, elapsedMs: 0, status: 'rejected');
+            $this->store->record((string) $request->input('connection', 'default'), $sql, rows: null, elapsedMs: 0, status: 'rejected');
 
             return response()->json(['message' => $exception->getMessage()], 422);
         } catch (UnsupportedDriverException $exception) {
@@ -87,10 +86,10 @@ final class DbConsoleController extends Controller
 
     public function explain(Request $request): JsonResponse
     {
-        abort_unless((bool)config('db-console.explain', default: true), 404);
+        abort_unless((bool) config('db-console.explain', default: true), 404);
 
         try {
-            return response()->json(new SqlRunner($this->connection($request))->explain((string)$request->input('sql', '')));
+            return response()->json(new SqlRunner($this->connection($request))->explain((string) $request->input('sql', '')));
         } catch (SqlGuardException|UnsupportedDriverException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -115,15 +114,15 @@ final class DbConsoleController extends Controller
             $connection = $this->connection($request);
             $writer = new RowWriter($connection, new SchemaInspector($connection));
 
-            $schema = (string)($validated['schema'] ?? $connection->schemas[0] ?? 'public');
-            $pk = (array)($validated['pk'] ?? []);
-            $values = (array)($validated['values'] ?? []);
+            $schema = (string) ($validated['schema'] ?? $connection->schemas[0] ?? 'public');
+            $pk = (array) ($validated['pk'] ?? []);
+            $values = (array) ($validated['values'] ?? []);
 
             $preview = $writer->preview($schema, $validated['table'], $validated['action'], $pk, $values);
 
             $needsConfirmation = $connection->confirmWrites || $validated['action'] === 'delete';
 
-            if ($needsConfirmation && !$this->confirm->consume($request->input('confirm_token'), $connection->key, $preview)) {
+            if ($needsConfirmation && ! $this->confirm->consume($request->input('confirm_token'), $connection->key, $preview)) {
                 return response()->json([
                     'confirm' => [
                         'token' => $this->confirm->issue($connection->key, $preview),
@@ -146,7 +145,7 @@ final class DbConsoleController extends Controller
     {
         try {
             $connection = $this->connection($request);
-            $token = $this->store->share($connection->key, (string)$request->input('sql', ''));
+            $token = $this->store->share($connection->key, (string) $request->input('sql', ''));
 
             return response()->json(['url' => route('db-console.shared', $token)]);
         } catch (SqlGuardException|UnsupportedDriverException $exception) {
@@ -162,7 +161,7 @@ final class DbConsoleController extends Controller
         ]);
 
         return response()->json($this->store->save(
-            (string)$request->input('connection', 'default'),
+            (string) $request->input('connection', 'default'),
             $validated['sql'],
             $validated['name'],
         ));
@@ -198,8 +197,8 @@ final class DbConsoleController extends Controller
             'brand' => config('db-console.brand'),
             'strings' => trans('db-console::ui'),
             'features' => [
-                'explain' => (bool)config('db-console.explain', default: true),
-                'share' => (bool)config('db-console.share.enabled', default: true),
+                'explain' => (bool) config('db-console.explain', default: true),
+                'share' => (bool) config('db-console.share.enabled', default: true),
                 'rowEdit' => $active['connection']?->isWritable() ?? false,
             ],
             'sql' => [
@@ -227,11 +226,11 @@ final class DbConsoleController extends Controller
     {
         $payloads = [];
 
-        foreach (array_keys((array)config('db-console.connections', ['default' => []])) as $key) {
+        foreach (array_keys((array) config('db-console.connections', ['default' => []])) as $key) {
             try {
-                $payloads[] = Connection::resolve((string)$key)->payload();
+                $payloads[] = Connection::resolve((string) $key)->payload();
             } catch (UnsupportedDriverException $exception) {
-                $payloads[] = ['key' => (string)$key, 'label' => (string)$key, 'error' => $exception->getMessage()];
+                $payloads[] = ['key' => (string) $key, 'label' => (string) $key, 'error' => $exception->getMessage()];
             }
         }
 
@@ -239,7 +238,7 @@ final class DbConsoleController extends Controller
     }
 
     /**
-     * @param list<array<string, mixed>> $payloads
+     * @param  list<array<string, mixed>>  $payloads
      * @return array{connection: Connection|null, payload: array<string, mixed>|null, error: string|null}
      */
     private function resolveActive(?string $key, array $payloads): array
@@ -266,12 +265,12 @@ final class DbConsoleController extends Controller
 
     private function needsConfirmation(Connection $connection, string $sql): bool
     {
-        if (!$connection->confirmWrites || !$connection->isWritable()) {
+        if (! $connection->confirmWrites || ! $connection->isWritable()) {
             return false;
         }
 
         return new SqlRunner($connection)->kind($sql) === 'write'
-            && !$this->confirm->consume(request()->input('confirm_token'), $connection->key, $sql);
+            && ! $this->confirm->consume(request()->input('confirm_token'), $connection->key, $sql);
     }
 
     private function confirmationRequired(Connection $connection, string $sql): JsonResponse

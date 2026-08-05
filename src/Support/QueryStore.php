@@ -33,7 +33,7 @@ final class QueryStore
         return $this->scopeToOwner(SavedQuery::query())
             ->orderByDesc('id')
             ->get()
-            ->map(fn(SavedQuery $query): array => $this->presentSaved($query))
+            ->map(fn (SavedQuery $query): array => $this->presentSaved($query))
             ->all();
     }
 
@@ -78,13 +78,13 @@ final class QueryStore
             ->orderByDesc('id')
             ->limit(self::HISTORY_LIMIT)
             ->get()
-            ->map(fn(HistoryEntry $entry): array => [
-                'id' => (int)$entry->id,
-                'sql' => (string)$entry->sql,
-                'connection' => (string)$entry->connection,
-                'rows' => $entry->rows === null ? null : (int)$entry->rows,
-                'elapsedMs' => (int)$entry->elapsed_ms,
-                'status' => (string)$entry->status,
+            ->map(fn (HistoryEntry $entry): array => [
+                'id' => (int) $entry->id,
+                'sql' => (string) $entry->sql,
+                'connection' => (string) $entry->connection,
+                'rows' => $entry->rows === null ? null : (int) $entry->rows,
+                'elapsedMs' => (int) $entry->elapsed_ms,
+                'status' => (string) $entry->status,
                 'at' => $entry->created_at?->toIso8601String() ?? '',
             ])
             ->all();
@@ -111,8 +111,8 @@ final class QueryStore
     /** @return string the share token */
     public function share(string $connection, string $sql): string
     {
-        if (!(bool)config('db-console.share.enabled', default: true)) {
-            throw new SqlGuardException((string)__('db-console::guard.share_disabled'));
+        if (! (bool) config('db-console.share.enabled', default: true)) {
+            throw new SqlGuardException((string) __('db-console::guard.share_disabled'));
         }
 
         $token = mb_substr(Str::random(32), 0, 32);
@@ -123,7 +123,7 @@ final class QueryStore
             'token' => $token,
             'connection' => $connection,
             'sql' => $this->truncate($sql),
-            'expires_at' => $expiresDays === null ? null : Date::now()->addDays((int)$expiresDays),
+            'expires_at' => $expiresDays === null ? null : Date::now()->addDays((int) $expiresDays),
             'created_at' => Date::now(),
         ]);
 
@@ -140,7 +140,7 @@ final class QueryStore
     {
         $shared = SharedQuery::query()->where('token', $token)->first();
 
-        if (!$shared instanceof SharedQuery) {
+        if (! $shared instanceof SharedQuery) {
             return null;
         }
 
@@ -149,8 +149,8 @@ final class QueryStore
         }
 
         return [
-            'connection' => (string)$shared->connection,
-            'sql' => (string)$shared->sql,
+            'connection' => (string) $shared->connection,
+            'sql' => (string) $shared->sql,
         ];
     }
 
@@ -197,7 +197,7 @@ final class QueryStore
     {
         $id = auth()->hasUser() ? auth()->id() : null;
 
-        return is_numeric($id) ? (int)$id : null;
+        return is_numeric($id) ? (int) $id : null;
     }
 
     private function ownerSessionId(): ?string
@@ -216,10 +216,10 @@ final class QueryStore
     private function presentSaved(SavedQuery $query): array
     {
         return [
-            'id' => (int)$query->id,
-            'name' => (string)$query->name,
-            'sql' => (string)$query->sql,
-            'connection' => (string)$query->connection,
+            'id' => (int) $query->id,
+            'name' => (string) $query->name,
+            'sql' => (string) $query->sql,
+            'connection' => (string) $query->connection,
         ];
     }
 }

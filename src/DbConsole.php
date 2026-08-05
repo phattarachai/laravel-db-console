@@ -22,7 +22,7 @@ final class DbConsole
     private static ?Closure $authUsing = null;
 
     /**
-     * @param Closure(Request): bool $callback
+     * @param  Closure(Request): bool  $callback
      */
     public static function auth(Closure $callback): void
     {

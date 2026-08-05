@@ -27,7 +27,7 @@ abstract class TestCase extends Orchestra
         // The gate is process-global; a test that registers its own callback
         // would otherwise leak into every test that runs after it.
         DbConsole::flushAuth();
-        DbConsole::auth(fn($request): bool => $request->user() !== null);
+        DbConsole::auth(fn ($request): bool => $request->user() !== null);
     }
 
     #[Override]
@@ -68,9 +68,9 @@ abstract class TestCase extends Orchestra
         $config->set('auth.providers.users.model', DcUser::class);
         // The published page ships with the package, so `assertInertia`'s
         // "does this component exist?" check resolves without a host tree.
-        $config->set('inertia.pages.paths', [__DIR__ . '/../resources/js/pages']);
+        $config->set('inertia.pages.paths', [__DIR__.'/../resources/js/pages']);
         $config->set('inertia.pages.extensions', ['jsx']);
-        $config->set('view.paths', [...(array)$config->get('view.paths', []), __DIR__ . '/Fixtures/views']);
+        $config->set('view.paths', [...(array) $config->get('view.paths', []), __DIR__.'/Fixtures/views']);
 
         // Pin the console's own config: the shipped file is a tunable an app
         // owner edits, so the suite must not assert against whatever it says.
@@ -83,12 +83,12 @@ abstract class TestCase extends Orchestra
 
     protected function defineRoutes($router): void
     {
-        Route::get('/login', fn(): string => 'login')->name('login');
+        Route::get('/login', fn (): string => 'login')->name('login');
     }
 
     #[Override]
     protected function defineDatabaseMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
     }
 }

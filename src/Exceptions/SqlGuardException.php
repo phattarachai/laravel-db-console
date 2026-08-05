@@ -10,6 +10,4 @@ use RuntimeException;
  * A statement the console refuses to run, or a driver error, carrying a message
  * that is safe to show in the browser. Surfaced as 422 by the controller.
  */
-final class SqlGuardException extends RuntimeException
-{
-}
+final class SqlGuardException extends RuntimeException {}

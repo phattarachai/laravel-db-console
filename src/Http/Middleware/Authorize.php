@@ -27,7 +27,7 @@ final class Authorize
             return $next($request);
         }
 
-        if ($request->user() === null && !$request->expectsJson()) {
+        if ($request->user() === null && ! $request->expectsJson()) {
             $login = $this->loginUrl();
 
             if ($login !== null) {
@@ -43,7 +43,7 @@ final class Authorize
     {
         $target = config('db-console.redirect_guests_to');
 
-        if (!is_string($target) || $target === '') {
+        if (! is_string($target) || $target === '') {
             return null;
         }
 

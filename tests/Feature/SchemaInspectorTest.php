@@ -29,13 +29,13 @@ it('hides configured tables from the tree and rejects them in SQL', function ():
     expect($names)->not->toContain('dc_hidden')
         ->and($names)->not->toContain('db_console_history');
 
-    expect(fn() => new SqlRunner($connection)->run('SELECT * FROM dc_hidden'))
+    expect(fn () => new SqlRunner($connection)->run('SELECT * FROM dc_hidden'))
         ->toThrow(SqlGuardException::class);
 });
 
 it('fails loudly when a configured connection is not Postgres', function (): void {
     config()->set('db-console.connections', ['sqlite' => []]);
 
-    expect(fn() => Connection::resolve('sqlite')->db())
+    expect(fn () => Connection::resolve('sqlite')->db())
         ->toThrow(UnsupportedDriverException::class, 'driver [sqlite]');
 });

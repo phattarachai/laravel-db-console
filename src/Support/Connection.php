@@ -22,9 +22,9 @@ final class Connection
     public const string DRIVER = 'pgsql';
 
     /**
-     * @param list<string> $schemas
-     * @param list<string> $hiddenTables
-     * @param list<string> $maskedColumns
+     * @param  list<string>  $schemas
+     * @param  list<string>  $hiddenTables
+     * @param  list<string>  $maskedColumns
      */
     private function __construct(
         public string $key,
@@ -38,8 +38,7 @@ final class Connection
         public bool $confirmWrites,
         public array $hiddenTables,
         public array $maskedColumns,
-    ) {
-    }
+    ) {}
 
     /**
      * Resolve a configured connection by its config key. Null picks the first
@@ -51,7 +50,7 @@ final class Connection
 
         $key ??= array_key_first($configured) ?? 'default';
 
-        if (!array_key_exists($key, $configured)) {
+        if (! array_key_exists($key, $configured)) {
             throw UnsupportedDriverException::notConfigured($key);
         }
 
@@ -66,7 +65,7 @@ final class Connection
     public static function all(): array
     {
         return array_values(array_map(
-            fn(string $key, array $options): self => self::make($key, $options),
+            fn (string $key, array $options): self => self::make($key, $options),
             array_keys(self::configured()),
             array_values(self::configured()),
         ));
@@ -111,7 +110,7 @@ final class Connection
             'name' => $this->name,
             'label' => $this->label,
             'database' => $connection->getDatabaseName(),
-            'driver' => 'PostgreSQL ' . $connection->getPdo()->getAttribute(PDO::ATTR_SERVER_VERSION),
+            'driver' => 'PostgreSQL '.$connection->getPdo()->getAttribute(PDO::ATTR_SERVER_VERSION),
             'mode' => $this->mode,
             'confirmWrites' => $this->confirmWrites,
         ];
@@ -125,11 +124,11 @@ final class Connection
         /** @var array<string, array<string, mixed>|null> $connections */
         $connections = config('db-console.connections', ['default' => []]);
 
-        return array_map(fn(?array $options): array => $options ?? [], $connections);
+        return array_map(fn (?array $options): array => $options ?? [], $connections);
     }
 
     /**
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     private static function make(string $key, array $options): self
     {
@@ -137,7 +136,7 @@ final class Connection
         $defaults = config('db-console.defaults', []);
         $options = [...$defaults, ...$options];
 
-        $name = $key === 'default' ? (string)config('database.default') : $key;
+        $name = $key === 'default' ? (string) config('database.default') : $key;
 
         if (config("database.connections.{$name}") === null) {
             throw UnsupportedDriverException::unknown($name);
@@ -146,15 +145,15 @@ final class Connection
         return new self(
             key: $key,
             name: $name,
-            label: (string)($options['label'] ?? $name),
+            label: (string) ($options['label'] ?? $name),
             mode: ($options['mode'] ?? 'read') === 'write' ? 'write' : 'read',
-            schemas: array_values((array)($options['schemas'] ?? ['public'])),
-            maxRows: (int)($options['max_rows'] ?? 5000),
-            timeout: (int)($options['timeout'] ?? 5000),
-            sampleRows: (int)($options['sample_rows'] ?? 100),
-            confirmWrites: (bool)($options['confirm_writes'] ?? true),
-            hiddenTables: array_values((array)config('db-console.hidden_tables', [])),
-            maskedColumns: array_values((array)config('db-console.masked_columns', [])),
+            schemas: array_values((array) ($options['schemas'] ?? ['public'])),
+            maxRows: (int) ($options['max_rows'] ?? 5000),
+            timeout: (int) ($options['timeout'] ?? 5000),
+            sampleRows: (int) ($options['sample_rows'] ?? 100),
+            confirmWrites: (bool) ($options['confirm_writes'] ?? true),
+            hiddenTables: array_values((array) config('db-console.hidden_tables', [])),
+            maskedColumns: array_values((array) config('db-console.masked_columns', [])),
         );
     }
 }

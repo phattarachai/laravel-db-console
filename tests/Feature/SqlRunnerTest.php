@@ -30,12 +30,12 @@ it('masks configured columns server-side', function (): void {
 });
 
 it('rejects DML on a read-only connection', function (): void {
-    expect(fn() => new SqlRunner(Connection::resolve())->run('DELETE FROM dc_owners'))
+    expect(fn () => new SqlRunner(Connection::resolve())->run('DELETE FROM dc_owners'))
         ->toThrow(SqlGuardException::class, __('db-console::guard.read_only', ['keyword' => 'DELETE']));
 });
 
 it('never allows DDL, even on a writable connection', function (string $sql, string $keyword): void {
-    expect(fn() => new SqlRunner(dcWritable())->run($sql))
+    expect(fn () => new SqlRunner(dcWritable())->run($sql))
         ->toThrow(SqlGuardException::class, __('db-console::guard.blocked', ['keyword' => $keyword]));
 })->with([
     ['DROP TABLE dc_owners', 'DROP'],
@@ -45,7 +45,7 @@ it('never allows DDL, even on a writable connection', function (string $sql, str
 ]);
 
 it('rejects multiple statements', function (): void {
-    expect(fn() => new SqlRunner(Connection::resolve())->run('SELECT 1; DROP TABLE dc_owners;'))
+    expect(fn () => new SqlRunner(Connection::resolve())->run('SELECT 1; DROP TABLE dc_owners;'))
         ->toThrow(SqlGuardException::class, __('db-console::guard.single_statement'));
 });
 
@@ -53,7 +53,7 @@ it('blocks a write that passes the keyword guard, via the read-only transaction'
     dcOwner();
     $before = DB::table('dc_owners')->max('id');
 
-    expect(fn() => new SqlRunner(Connection::resolve())->run("SELECT nextval('dc_owners_id_seq')"))
+    expect(fn () => new SqlRunner(Connection::resolve())->run("SELECT nextval('dc_owners_id_seq')"))
         ->toThrow(SqlGuardException::class);
 
     expect(DB::table('dc_owners')->max('id'))->toBe($before);

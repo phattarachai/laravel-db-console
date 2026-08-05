@@ -23,9 +23,7 @@ use Throwable;
  */
 final readonly class SqlRunner
 {
-    public function __construct(private Connection $connection)
-    {
-    }
+    public function __construct(private Connection $connection) {}
 
     /**
      * Classify without running, so the caller can demand a confirmation before a
@@ -63,14 +61,14 @@ final readonly class SqlRunner
 
         try {
             $db->statement('SET TRANSACTION READ ONLY');
-            $db->statement('SET LOCAL statement_timeout = ' . $this->connection->timeout);
+            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
 
-            $statement = $this->query($db, 'EXPLAIN ' . $sql);
+            $statement = $this->query($db, 'EXPLAIN '.$sql);
 
             return [
                 'kind' => 'explain',
                 'plan' => array_map(
-                    fn(mixed $line): string => (string)$line,
+                    fn (mixed $line): string => (string) $line,
                     array_values($statement->fetchAll(PDO::FETCH_COLUMN, 0)),
                 ),
                 'elapsedMs' => $this->elapsedSince($startedAt),
@@ -94,7 +92,7 @@ final readonly class SqlRunner
 
         try {
             $db->statement('SET TRANSACTION READ ONLY');
-            $db->statement('SET LOCAL statement_timeout = ' . $this->connection->timeout);
+            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
 
             $statement = $this->query($db, $sql);
 
@@ -125,7 +123,7 @@ final readonly class SqlRunner
         $db->beginTransaction();
 
         try {
-            $db->statement('SET LOCAL statement_timeout = ' . $this->connection->timeout);
+            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
 
             $affected = $db->getPdo()->exec($sql);
 
@@ -133,7 +131,7 @@ final readonly class SqlRunner
 
             return [
                 'kind' => 'write',
-                'rowsAffected' => (int)$affected,
+                'rowsAffected' => (int) $affected,
                 'elapsedMs' => $this->elapsedSince($startedAt),
             ];
         } catch (PDOException $exception) {
@@ -151,7 +149,7 @@ final readonly class SqlRunner
     {
         $statement = $db->getPdo()->query($sql);
 
-        if (!$statement instanceof PDOStatement) {
+        if (! $statement instanceof PDOStatement) {
             throw new SqlGuardException(__('db-console::guard.failed'));
         }
 
@@ -168,8 +166,8 @@ final readonly class SqlRunner
         for ($i = 0, $count = $statement->columnCount(); $i < $count; $i++) {
             $meta = $statement->getColumnMeta($i) ?: [];
             $columns[] = [
-                'name' => $meta['name'] ?? 'column_' . $i,
-                'type' => $this->displayType((string)($meta['native_type'] ?? 'text')),
+                'name' => $meta['name'] ?? 'column_'.$i,
+                'type' => $this->displayType((string) ($meta['native_type'] ?? 'text')),
             ];
         }
 
@@ -199,12 +197,12 @@ final readonly class SqlRunner
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
     private function normalizeRow(array $row): array
     {
-        return array_map(fn(mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
+        return array_map(fn (mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
     }
 
     /** Friendlier names for the Postgres native types PDO reports. */
@@ -224,12 +222,12 @@ final readonly class SqlRunner
 
     private function elapsedSince(float|int $startedAt): int
     {
-        return (int)round((hrtime(as_number: true) - $startedAt) / 1_000_000);
+        return (int) round((hrtime(as_number: true) - $startedAt) / 1_000_000);
     }
 
     private function wrap(PDOException $exception): SqlGuardException
     {
-        return new SqlGuardException($this->cleanMessage($exception), (int)$exception->getCode(), previous: $exception);
+        return new SqlGuardException($this->cleanMessage($exception), (int) $exception->getCode(), previous: $exception);
     }
 
     /** Strip the "SQLSTATE[..]: .." driver prefix so the console shows just the message. */
@@ -237,7 +235,7 @@ final readonly class SqlRunner
     {
         $message = preg_replace('/^SQLSTATE\[[^\]]+\]:?\s*/', '', $exception->getMessage()) ?? $exception->getMessage();
 
-        return trim($message) === '' ? (string)__('db-console::guard.failed') : trim($message);
+        return trim($message) === '' ? (string) __('db-console::guard.failed') : trim($message);
     }
 
     private function rollBackQuietly(DatabaseConnection $db): void

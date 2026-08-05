@@ -26,12 +26,11 @@ final readonly class RowWriter
     public function __construct(
         private Connection $connection,
         private SchemaInspector $inspector,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $pk
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $pk
+     * @param  array<string, mixed>  $values
      * @return array{sql: string, affected: int, row: array<string, mixed>|null}
      */
     public function apply(string $schema, string $table, string $action, array $pk, array $values): array
@@ -45,7 +44,7 @@ final readonly class RowWriter
         $db->beginTransaction();
 
         try {
-            $db->statement('SET LOCAL statement_timeout = ' . $this->connection->timeout);
+            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
 
             [$affected, $row] = match ($action) {
                 'create' => $this->insert($db, $qualified, $values),
@@ -67,7 +66,7 @@ final readonly class RowWriter
         } catch (PDOException $exception) {
             $this->rollBackQuietly($db);
 
-            throw new SqlGuardException($this->cleanMessage($exception), (int)$exception->getCode(), previous: $exception);
+            throw new SqlGuardException($this->cleanMessage($exception), (int) $exception->getCode(), previous: $exception);
         } catch (Throwable $throwable) {
             $this->rollBackQuietly($db);
 
@@ -79,8 +78,8 @@ final readonly class RowWriter
      * The statement the grid is about to run, with its bindings inlined so the
      * confirm dialog can show it. Display only — never executed.
      *
-     * @param array<string, mixed> $pk
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $pk
+     * @param  array<string, mixed>  $values
      */
     public function preview(string $schema, string $table, string $action, array $pk, array $values): string
     {
@@ -93,16 +92,16 @@ final readonly class RowWriter
     }
 
     /**
-     * @param array<string, mixed> $pk
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $pk
+     * @param  array<string, mixed>  $values
      */
     private function assertWritable(string $schema, string $table, string $action, array $pk, array $values): void
     {
-        if (!$this->connection->isWritable()) {
+        if (! $this->connection->isWritable()) {
             throw new SqlGuardException(__('db-console::guard.read_only_row'));
         }
 
-        if (!in_array($action, self::ACTIONS, strict: true)) {
+        if (! in_array($action, self::ACTIONS, strict: true)) {
             throw new SqlGuardException(__('db-console::guard.failed'));
         }
 
@@ -122,9 +121,9 @@ final readonly class RowWriter
         $columns = array_column($definition['columns'], 'name');
 
         foreach (array_keys($values) as $column) {
-            $column = (string)$column;
+            $column = (string) $column;
 
-            if (!in_array($column, $columns, strict: true)) {
+            if (! in_array($column, $columns, strict: true)) {
                 throw new SqlGuardException(__('db-console::guard.unknown_column', ['column' => $column]));
             }
 
@@ -135,7 +134,7 @@ final readonly class RowWriter
     }
 
     /**
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $values
      * @return array{0: int, 1: array<string, mixed>|null}
      */
     private function insert(DatabaseConnection $db, string $qualified, array $values): array
@@ -149,8 +148,8 @@ final readonly class RowWriter
     }
 
     /**
-     * @param array<string, mixed> $pk
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $pk
+     * @param  array<string, mixed>  $values
      * @return array{0: int, 1: array<string, mixed>|null}
      */
     private function change(DatabaseConnection $db, string $qualified, array $pk, array $values): array
@@ -167,7 +166,7 @@ final readonly class RowWriter
     }
 
     /**
-     * @param array<string, mixed> $pk
+     * @param  array<string, mixed>  $pk
      * @return array{0: int, 1: null}
      */
     private function remove(DatabaseConnection $db, string $qualified, array $pk): array
@@ -176,8 +175,8 @@ final readonly class RowWriter
     }
 
     /**
-     * @param array<string, mixed> $pk
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $pk
+     * @param  array<string, mixed>  $values
      * @return array{0: string, 1: list<mixed>}
      */
     private function compile(DatabaseConnection $db, string $qualified, string $action, array $pk, array $values): array
@@ -208,28 +207,28 @@ final readonly class RowWriter
      * `returning *` hands back the stored row — defaults and triggers included —
      * without a second round trip.
      *
-     * @param array<string, mixed> $values
+     * @param  array<string, mixed>  $values
      */
     private function insertSql(Builder $query, array $values): string
     {
         $grammar = $query->getGrammar();
 
-        return $grammar->compileInsert($query, $values === [] ? [] : [$values]) . ' returning *';
+        return $grammar->compileInsert($query, $values === [] ? [] : [$values]).' returning *';
     }
 
     /**
-     * @param list<mixed> $rows
+     * @param  list<mixed>  $rows
      * @return array<string, mixed>|null
      */
     private function firstRow(array $rows): ?array
     {
         $row = $rows[0] ?? null;
 
-        return $row === null ? null : (array)$row;
+        return $row === null ? null : (array) $row;
     }
 
     /**
-     * @param list<mixed> $bindings
+     * @param  list<mixed>  $bindings
      */
     private function interpolate(DatabaseConnection $db, string $sql, array $bindings): string
     {
@@ -238,7 +237,7 @@ final readonly class RowWriter
         $rendered = array_shift($parts);
 
         foreach ($parts as $index => $part) {
-            $rendered .= $this->literal($pdo, $bindings[$index] ?? null) . $part;
+            $rendered .= $this->literal($pdo, $bindings[$index] ?? null).$part;
         }
 
         return $rendered;
@@ -249,18 +248,18 @@ final readonly class RowWriter
         return match (true) {
             $value === null => 'NULL',
             is_bool($value) => $value ? 'true' : 'false',
-            is_int($value), is_float($value) => (string)$value,
-            default => (string)$pdo->quote((string)$value),
+            is_int($value), is_float($value) => (string) $value,
+            default => (string) $pdo->quote((string) $value),
         };
     }
 
     /**
-     * @param list<mixed> $values
+     * @param  list<mixed>  $values
      * @return list<string>
      */
     private function sorted(array $values): array
     {
-        $sorted = array_map(fn(mixed $value): string => (string)$value, $values);
+        $sorted = array_map(fn (mixed $value): string => (string) $value, $values);
         sort($sorted);
 
         return $sorted;
@@ -268,7 +267,7 @@ final readonly class RowWriter
 
     private function qualified(string $schema, string $table): string
     {
-        return $schema . '.' . $table;
+        return $schema.'.'.$table;
     }
 
     /** Strip the "SQLSTATE[..]: .." driver prefix so the console shows just the message. */
@@ -276,7 +275,7 @@ final readonly class RowWriter
     {
         $message = preg_replace('/^SQLSTATE\[[^\]]+\]:?\s*/', '', $exception->getMessage()) ?? $exception->getMessage();
 
-        return trim($message) === '' ? (string)__('db-console::guard.failed') : trim($message);
+        return trim($message) === '' ? (string) __('db-console::guard.failed') : trim($message);
     }
 
     private function rollBackQuietly(DatabaseConnection $db): void

@@ -30,7 +30,7 @@ final readonly class SchemaInspector
      */
     public function schemas(): array
     {
-        return array_map(fn(string $schema): array => [
+        return array_map(fn (string $schema): array => [
             'name' => $schema,
             'tables' => $this->objects($schema),
         ], $this->connection->schemas);
@@ -60,23 +60,23 @@ final readonly class SchemaInspector
      */
     private function objects(string $schema): array
     {
-        $tables = array_map(fn(array $table): array => $this->object($schema, $table['name'], 'table'),
+        $tables = array_map(fn (array $table): array => $this->object($schema, $table['name'], 'table'),
             $this->inSchema($this->schema()->getTables(), $schema));
-        $views = array_map(fn(array $view): array => $this->object($schema, $view['name'], 'view'),
+        $views = array_map(fn (array $view): array => $this->object($schema, $view['name'], 'view'),
             $this->inSchema($this->schema()->getViews(), $schema));
 
         return [...$tables, ...$views];
     }
 
     /**
-     * @param list<array{name: string, schema?: string|null}> $objects
+     * @param  list<array{name: string, schema?: string|null}>  $objects
      * @return list<array{name: string, schema?: string|null}>
      */
     private function inSchema(array $objects, string $schema): array
     {
         return array_values(array_filter(
             $objects,
-            fn(array $object): bool => ($object['schema'] ?? $schema) === $schema && !$this->redactor->isHiddenTable($object['name']),
+            fn (array $object): bool => ($object['schema'] ?? $schema) === $schema && ! $this->redactor->isHiddenTable($object['name']),
         ));
     }
 
@@ -98,16 +98,16 @@ final readonly class SchemaInspector
     }
 
     /**
-     * @param list<string> $primaryColumns
-     * @param array<string, string> $foreignKeyMap
+     * @param  list<string>  $primaryColumns
+     * @param  array<string, string>  $foreignKeyMap
      * @return list<DcColumn>
      */
     private function columns(string $table, array $primaryColumns, array $foreignKeyMap): array
     {
-        return array_map(fn(array $column): array => [
+        return array_map(fn (array $column): array => [
             'name' => $column['name'],
             'type' => $column['type'],
-            'nullable' => (bool)$column['nullable'],
+            'nullable' => (bool) $column['nullable'],
             'pk' => in_array($column['name'], $primaryColumns, strict: true),
             'fk' => $foreignKeyMap[$column['name']] ?? null,
             'default' => $this->normalizeDefault($column['default']),
@@ -120,12 +120,12 @@ final readonly class SchemaInspector
     }
 
     /**
-     * @param list<array{name: string, columns: list<string>, type: string, unique: bool, primary: bool}> $indexes
+     * @param  list<array{name: string, columns: list<string>, type: string, unique: bool, primary: bool}>  $indexes
      * @return list<DcIndex>
      */
     private function indexes(array $indexes): array
     {
-        return array_map(fn(array $index): array => [
+        return array_map(fn (array $index): array => [
             'name' => $index['name'],
             'type' => $this->indexType($index),
             'columns' => $index['columns'],
@@ -133,31 +133,31 @@ final readonly class SchemaInspector
     }
 
     /**
-     * @param array{type: string, unique: bool, primary: bool} $index
+     * @param  array{type: string, unique: bool, primary: bool}  $index
      */
     private function indexType(array $index): string
     {
         return match (true) {
-            (bool)$index['primary'] => 'PRIMARY',
-            (bool)$index['unique'] => 'UNIQUE',
+            (bool) $index['primary'] => 'PRIMARY',
+            (bool) $index['unique'] => 'UNIQUE',
             $index['type'] === 'gin' => 'GIN',
             default => 'INDEX',
         };
     }
 
     /**
-     * @param list<array{columns: list<string>, primary: bool}> $indexes
+     * @param  list<array{columns: list<string>, primary: bool}>  $indexes
      * @return list<string>
      */
     private function primaryColumns(array $indexes): array
     {
-        $primary = array_values(array_filter($indexes, fn(array $index): bool => (bool)$index['primary']));
+        $primary = array_values(array_filter($indexes, fn (array $index): bool => (bool) $index['primary']));
 
-        return $primary === [] ? [] : array_merge(...array_map(fn(array $index): array => $index['columns'], $primary));
+        return $primary === [] ? [] : array_merge(...array_map(fn (array $index): array => $index['columns'], $primary));
     }
 
     /**
-     * @param list<array{columns: list<string>, foreign_table: string, foreign_columns: list<string>}> $foreignKeys
+     * @param  list<array{columns: list<string>, foreign_table: string, foreign_columns: list<string>}>  $foreignKeys
      * @return array<string, string>
      */
     private function foreignKeyMap(array $foreignKeys): array
@@ -165,22 +165,22 @@ final readonly class SchemaInspector
         $map = [];
 
         foreach ($foreignKeys as $foreignKey) {
-            $map[$foreignKey['columns'][0]] = $foreignKey['foreign_table'] . '.' . $foreignKey['foreign_columns'][0];
+            $map[$foreignKey['columns'][0]] = $foreignKey['foreign_table'].'.'.$foreignKey['foreign_columns'][0];
         }
 
         return $map;
     }
 
     /**
-     * @param list<array{name: string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: string, on_delete: string}> $foreignKeys
+     * @param  list<array{name: string, columns: list<string>, foreign_table: string, foreign_columns: list<string>, on_update: string, on_delete: string}>  $foreignKeys
      * @return list<DcForeignKey>
      */
     private function foreignKeys(array $foreignKeys): array
     {
-        return array_map(fn(array $foreignKey): array => [
+        return array_map(fn (array $foreignKey): array => [
             'name' => $foreignKey['name'],
             'columns' => $foreignKey['columns'],
-            'references' => $foreignKey['foreign_table'] . '.' . $foreignKey['foreign_columns'][0],
+            'references' => $foreignKey['foreign_table'].'.'.$foreignKey['foreign_columns'][0],
             'onDelete' => strtoupper($foreignKey['on_delete']),
             'onUpdate' => strtoupper($foreignKey['on_update']),
         ], $foreignKeys);
@@ -188,7 +188,7 @@ final readonly class SchemaInspector
 
     private function rowCount(string $schema, string $table, string $type): int
     {
-        $estimate = (int)($this->connection->db()->selectOne('SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass(?)',
+        $estimate = (int) ($this->connection->db()->selectOne('SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass(?)',
             ["{$schema}.{$table}"])?->estimate ?? 0);
 
         return match (true) {
@@ -204,19 +204,19 @@ final readonly class SchemaInspector
     private function sampleRows(string $schema, string $table): array
     {
         $rows = $this->connection->db()->table($this->qualify($schema, $table))->limit($this->connection->sampleRows)->get()
-            ->map(fn(object $row): array => $this->normalizeRow((array)$row))
+            ->map(fn (object $row): array => $this->normalizeRow((array) $row))
             ->all();
 
         return $this->redactor->maskRows($rows);
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
     private function normalizeRow(array $row): array
     {
-        return array_map(fn(mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
+        return array_map(fn (mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
     }
 
     /**
