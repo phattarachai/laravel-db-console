@@ -68,8 +68,11 @@ abstract class TestCase extends Orchestra
         $config->set('auth.providers.users.model', DcUser::class);
         // The published page ships with the package, so `assertInertia`'s
         // "does this component exist?" check resolves without a host tree.
+        // Inertia v3 reads `pages.*`; v2 read `testing.page_*`.
         $config->set('inertia.pages.paths', [__DIR__.'/../resources/js/pages']);
         $config->set('inertia.pages.extensions', ['jsx']);
+        $config->set('inertia.testing.page_paths', [__DIR__.'/../resources/js/pages']);
+        $config->set('inertia.testing.page_extensions', ['jsx']);
         $config->set('view.paths', [...(array) $config->get('view.paths', []), __DIR__.'/Fixtures/views']);
 
         // Pin the console's own config: the shipped file is a tunable an app
