@@ -120,7 +120,8 @@ Kill it entirely with `DB_CONSOLE_ENABLED=false`: no routes are registered at al
 
 **Explorer** — schema tree with a filter, per-table **Structure** (columns with types, nullability, defaults, indexes,
 foreign keys) and **Data** tabs, sortable and filterable grid, foreign-key jump-to-referenced-row, CSV export of the
-current view. Columns are **drag-resizable from their right edge** (double-click a handle to reset), and the widths are
+current view. **Star a table** to add it to your favourites, and the star beside the filter box narrows the tree to
+those alone — the working set of a 150-table database is usually a dozen. Columns are **drag-resizable from their right edge** (double-click a handle to reset), and the widths are
 remembered per table in the browser. A **View** menu toggles the column-type line on and off.
 
 **The value panel** — double-click any cell to open a side panel with the full value, pretty-printed and
@@ -139,6 +140,10 @@ typed confirmation**, whatever `confirm_writes` says, because it is one irrevers
 
 **Multiple connections** — list more than one in `connections` and a picker appears in the toolbar, each with its own
 mode badge. A read-only connection sits next to a writable one without either being able to affect the other.
+
+**Constant-cost page load** — opening the console reads object names, kinds and row counts, and nothing else: four
+queries and a few KB, whether the schema has ten tables or a thousand. A table's columns, indexes, foreign keys and
+row sample are fetched when you select or expand it, and cached for the life of the page.
 
 ## Safety model
 

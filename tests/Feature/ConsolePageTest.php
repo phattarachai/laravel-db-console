@@ -33,10 +33,12 @@ it('serves live Postgres introspection to an authorised user', function (): void
             ->has('sql.history')
             ->where('schemas.0.name', 'public')
             ->where('schemas.0.tables', fn ($tables): bool => collect($tables)->pluck('name')->contains('dc_owners'))
+            ->has('favorites')
+            // The tree is names only — columns and rows arrive from the table
+            // endpoint when one is selected, not with the page.
             ->has('schemas.0.tables.0', fn ($table) => $table
                 ->has('name')->has('type')->has('rowCount')
-                ->has('columns')->has('indexes')->has('foreignKeys')->has('rows')
-                ->etc()));
+                ->missing('columns')->missing('rows')));
 });
 
 it('reopens a shared query for a user who may already see the console', function (): void {

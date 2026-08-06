@@ -13,6 +13,8 @@ return [
     'failed' => 'The statement could not be run.',
 
     'hidden_table' => 'The table :table is hidden.',
+    'unknown_table' => 'There is no table named :table.',
+    'unknown_schema' => 'The schema :schema is not browsable.',
 
     'read_only_row' => 'This connection is read-only, so rows cannot be edited.',
     'no_primary_key' => 'This table has no primary key, so rows cannot be edited.',

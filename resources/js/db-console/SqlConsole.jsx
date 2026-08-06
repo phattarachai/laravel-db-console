@@ -16,7 +16,7 @@ import {
   WandIcon,
 } from './icons'
 import { classifySql, formatSql } from './sql-lib'
-import { cx, HISTORY_LIMIT } from './lib'
+import { cx, HISTORY_LIMIT, sendJson } from './lib'
 import { SqlEditor } from './SqlEditor'
 import { useStrings } from './strings'
 
@@ -150,7 +150,7 @@ export function SqlConsole({
         body.confirm_token = confirmToken
       }
 
-      const { ok, status, data } = await send(queryUrl, 'POST', csrfToken, body)
+      const { ok, status, data } = await sendJson(queryUrl, 'POST', csrfToken, body)
 
       // 409 = type-to-confirm. Not an error: the identical body is replayed with
       // the token once the user has typed the confirmation word.
@@ -190,7 +190,7 @@ export function SqlConsole({
 
     setRunning(true)
     try {
-      const { ok, status, data } = await send(endpoints.explain, 'POST', csrfToken, {
+      const { ok, status, data } = await sendJson(endpoints.explain, 'POST', csrfToken, {
         connection: connectionKey,
         sql: text,
       })
@@ -211,7 +211,7 @@ export function SqlConsole({
 
   const shareCurrent = async () => {
     try {
-      const { ok, status, data } = await send(endpoints.share, 'POST', csrfToken, {
+      const { ok, status, data } = await sendJson(endpoints.share, 'POST', csrfToken, {
         connection: connectionKey,
         sql: text,
       })
@@ -245,7 +245,7 @@ export function SqlConsole({
       return
     }
 
-    const { ok, status, data } = await send(endpoints.saved, 'POST', csrfToken, {
+    const { ok, status, data } = await sendJson(endpoints.saved, 'POST', csrfToken, {
       connection: connectionKey,
       sql: statement,
       name: defaultName(statement),
@@ -261,7 +261,7 @@ export function SqlConsole({
   }
 
   const removeSaved = async (id) => {
-    const { ok } = await send(`${endpoints.saved}/${id}`, 'DELETE', csrfToken)
+    const { ok } = await sendJson(`${endpoints.saved}/${id}`, 'DELETE', csrfToken)
     if (ok) {
       setRemovedSaved((list) => (list.includes(id) ? list : [...list, id]))
     }
@@ -777,29 +777,4 @@ function historyEntry(sql, result, connectionKey) {
  */
 function runKey(entry) {
   return `${entry.sql}|${entry.rows}|${entry.elapsedMs}`
-}
-
-/**
- * One JSON request to a console endpoint. Never throws on a non-2xx — the caller
- * branches on `status` (409 is the confirmation handshake, 422 a guard / DB
- * rejection carrying a localised `message`).
- *
- * @returns {Promise<{ok: boolean, status: number, data: Record<string, any>}>}
- */
-async function send(url, method, csrfToken, body) {
-  const response = await fetch(url, {
-    method,
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-CSRF-TOKEN': csrfToken ?? '',
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  })
-
-  const data = await response.json().catch(() => ({}))
-
-  return { ok: response.ok, status: response.status, data }
 }

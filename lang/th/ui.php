@@ -22,6 +22,7 @@ return [
     'toolbar.schemeAuto' => 'ใช้ธีมตามแอป · คลิกเพื่อใช้ธีมสว่าง',
 
     'explorer.selectTable' => 'เลือกตารางจากแถบด้านข้างเพื่อดูข้อมูล',
+    'explorer.loadingTable' => 'กำลังโหลด :table…',
 
     'errors.fatalHint' => 'ตรวจสอบ config/db-console.php และการเชื่อมต่อฐานข้อมูล',
     'errors.shareExpired' => 'ลิงก์ที่แชร์หมดอายุแล้ว',
@@ -29,7 +30,13 @@ return [
     'sidebar.heading' => 'Tables & Views',
     'sidebar.filter' => 'Filter tables…',
     'sidebar.noMatches' => 'ไม่พบตารางที่ตรงกับ “:search”',
-    'sidebar.showColumns' => 'Show columns',
+    'sidebar.showColumns' => 'ดูคอลัมน์',
+    'sidebar.favorite' => 'เพิ่มในรายการโปรด',
+    'sidebar.unfavorite' => 'เอาออกจากรายการโปรด',
+    'sidebar.favoritesOnly' => 'แสดงเฉพาะรายการโปรด',
+    'sidebar.showAll' => 'แสดงทุกตาราง',
+    'sidebar.noFavorites' => 'ยังไม่มีรายการโปรด กดดาวที่ตารางเพื่อปักหมุดไว้',
+    'sidebar.loadingColumns' => 'กำลังโหลดคอลัมน์…',
     'sidebar.viewBadge' => 'view',
     'sidebar.insertTableHint' => 'ดับเบิลคลิกเพื่อแทรกชื่อลงใน SQL',
     'sidebar.insertColumnHint' => 'ดับเบิลคลิกเพื่อแทรกลงใน SQL',

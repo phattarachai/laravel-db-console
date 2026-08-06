@@ -13,6 +13,8 @@ return [
     'failed' => 'รันคำสั่งไม่สำเร็จ',
 
     'hidden_table' => 'ตาราง :table ถูกซ่อนไว้',
+    'unknown_table' => 'ไม่พบตาราง :table',
+    'unknown_schema' => 'สคีมา :schema ไม่ได้เปิดให้เข้าถึง',
 
     'read_only_row' => 'การเชื่อมต่อนี้อ่านได้เท่านั้น แก้ข้อมูลไม่ได้',
     'no_primary_key' => 'ตารางนี้ไม่มี primary key จึงแก้ข้อมูลไม่ได้',

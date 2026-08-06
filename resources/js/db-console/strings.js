@@ -28,6 +28,7 @@ export const DEFAULT_STRINGS = {
 
   // Explorer body (DbConsole)
   'explorer.selectTable': 'Pick a table from the sidebar to view its data',
+  'explorer.loadingTable': 'Loading :table…',
 
   // Fatal / share-link notices (DbConsole)
   'errors.fatalHint': 'Check config/db-console.php and your database connection.',
@@ -38,6 +39,12 @@ export const DEFAULT_STRINGS = {
   'sidebar.filter': 'Filter tables…',
   'sidebar.noMatches': 'No table matches “:search”',
   'sidebar.showColumns': 'Show columns',
+  'sidebar.favorite': 'Add to favourites',
+  'sidebar.unfavorite': 'Remove from favourites',
+  'sidebar.favoritesOnly': 'Show favourites only',
+  'sidebar.showAll': 'Show all tables',
+  'sidebar.noFavorites': 'No favourite yet — star a table to pin it here',
+  'sidebar.loadingColumns': 'Loading columns…',
   'sidebar.viewBadge': 'view',
   'sidebar.insertTableHint': 'Double-click to insert the name into the SQL editor',
   'sidebar.insertColumnHint': 'Double-click to insert into the SQL editor',

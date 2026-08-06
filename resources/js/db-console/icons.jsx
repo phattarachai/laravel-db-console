@@ -174,6 +174,15 @@ export function BookmarkIcon({ className }) {
   )
 }
 
+/** `filled` marks a starred table; the outline is the un-starred state. */
+export function StarIcon({ className, filled }) {
+  return (
+    <svg className={className} {...base} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5z" />
+    </svg>
+  )
+}
+
 export function AlertIcon({ className }) {
   return (
     <svg className={className} {...base}>

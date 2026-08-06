@@ -13,6 +13,7 @@ use Phattarachai\DbConsole\Exceptions\SqlGuardException;
 use Phattarachai\DbConsole\Exceptions\UnsupportedDriverException;
 use Phattarachai\DbConsole\Support\ConfirmToken;
 use Phattarachai\DbConsole\Support\Connection;
+use Phattarachai\DbConsole\Support\FavoriteStore;
 use Phattarachai\DbConsole\Support\QueryStore;
 use Phattarachai\DbConsole\Support\RowWriter;
 use Phattarachai\DbConsole\Support\SchemaInspector;
@@ -30,6 +31,7 @@ final class DbConsoleController extends Controller
 {
     public function __construct(
         private readonly QueryStore $store,
+        private readonly FavoriteStore $favorites,
         private readonly ConfirmToken $confirm,
     ) {}
 
@@ -48,6 +50,50 @@ final class DbConsoleController extends Controller
                 ? ['expired' => true, 'sql' => null]
                 : ['expired' => false, 'sql' => $share['sql']],
         ]);
+    }
+
+    /**
+     * One table in full — columns, indexes, foreign keys and the row sample the
+     * grid renders. Split out of the page payload so opening the console costs a
+     * handful of queries instead of six per table in the schema.
+     */
+    public function table(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'schema' => ['nullable', 'string'],
+            'table' => ['required', 'string'],
+        ]);
+
+        try {
+            $connection = $this->connection($request);
+            $schema = (string) ($validated['schema'] ?? $connection->schemas[0] ?? 'public');
+
+            return response()->json(new SchemaInspector($connection)->details($schema, $validated['table']));
+        } catch (SqlGuardException|UnsupportedDriverException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Star or unstar a table for the current owner.
+     */
+    public function favorite(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'schema' => ['nullable', 'string'],
+            'table' => ['required', 'string'],
+        ]);
+
+        try {
+            $connection = $this->connection($request);
+            $schema = (string) ($validated['schema'] ?? $connection->schemas[0] ?? 'public');
+
+            $this->favorites->toggle($connection->key, $schema, $validated['table']);
+
+            return response()->json(['favorites' => $this->favorites->all($connection->key)]);
+        } catch (UnsupportedDriverException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
     }
 
     /**
@@ -193,6 +239,8 @@ final class DbConsoleController extends Controller
                 'share' => route('db-console.share'),
                 'saved' => route('db-console.saved.store'),
                 'index' => route('db-console.index'),
+                'table' => route('db-console.table'),
+                'favorite' => route('db-console.favorite'),
             ],
             'brand' => config('db-console.brand'),
             'strings' => trans('db-console::ui'),
@@ -209,13 +257,17 @@ final class DbConsoleController extends Controller
         ];
 
         if ($active['connection'] === null) {
-            return [...$base, 'schemas' => [], 'fatal' => $active['error']];
+            return [...$base, 'schemas' => [], 'favorites' => [], 'fatal' => $active['error']];
         }
 
         try {
-            return [...$base, 'schemas' => new SchemaInspector($active['connection'])->schemas()];
+            return [
+                ...$base,
+                'schemas' => new SchemaInspector($active['connection'])->tree(),
+                'favorites' => $this->favorites->all($active['connection']->key),
+            ];
         } catch (UnsupportedDriverException $exception) {
-            return [...$base, 'schemas' => [], 'fatal' => $exception->getMessage()];
+            return [...$base, 'schemas' => [], 'favorites' => [], 'fatal' => $exception->getMessage()];
         }
     }
 
