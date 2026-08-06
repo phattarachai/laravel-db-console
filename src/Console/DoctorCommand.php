@@ -36,10 +36,16 @@ final class DoctorCommand extends Command
             $failures += $this->check("Connection [{$key}]", fn (): ?string => $this->connection((string) $key));
         }
 
-        $failures += $this->check('Tables migrated',
-            fn (): ?string => Schema::hasTable('db_console_queries') && Schema::hasTable('db_console_history') && Schema::hasTable('db_console_shares')
+        $failures += $this->check('Tables migrated', function (): ?string {
+            $missing = array_values(array_filter(
+                ['db_console_queries', 'db_console_history', 'db_console_shares', 'db_console_favorites'],
+                fn (string $table): bool => ! Schema::hasTable($table),
+            ));
+
+            return $missing === []
                 ? null
-                : 'Run `php artisan migrate` — the db_console_* tables are missing.');
+                : 'Run `php artisan migrate` — missing: '.implode(', ', $missing).'.';
+        });
 
         $failures += $this->check('Inertia page published', fn (): ?string => file_exists(resource_path('js/pages/DbConsole.jsx'))
             ? null

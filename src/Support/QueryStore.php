@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Phattarachai\DbConsole\Support;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use Phattarachai\DbConsole\Exceptions\SqlGuardException;
@@ -15,12 +14,13 @@ use Phattarachai\DbConsole\Models\SharedQuery;
 /**
  * Saved queries, run history, and share links.
  *
- * Everything is scoped to an "owner": the authenticated user when the host app
- * has auth, the session otherwise — so the console works unchanged in an app
- * with no auth at all, and one owner never sees or deletes another's rows.
+ * Everything is scoped to an owner (see {@see ScopesToOwner}), so one owner
+ * never sees or deletes another's rows.
  */
 final class QueryStore
 {
+    use ScopesToOwner;
+
     /** Defensive cap so a pathological statement cannot bloat the row. */
     private const int SQL_LIMIT = 20000;
 
@@ -152,59 +152,6 @@ final class QueryStore
             'connection' => (string) $shared->connection,
             'sql' => (string) $shared->sql,
         ];
-    }
-
-    /**
-     * The single place the user/session branch is expressed for reads.
-     */
-    private function scopeToOwner(Builder $query): Builder
-    {
-        $owner = $this->ownerAttributes();
-
-        if ($owner['user_id'] !== null) {
-            return $query->where('user_id', $owner['user_id']);
-        }
-
-        if ($owner['session_id'] === null) {
-            return $query->whereNull('user_id')->whereNull('session_id');
-        }
-
-        return $query->whereNull('user_id')->where('session_id', $owner['session_id']);
-    }
-
-    /**
-     * The same branch for writes. Exactly one of the two is ever set, which is
-     * what keeps the prune command's owner buckets disjoint.
-     *
-     * @return array{user_id:int|null,session_id:string|null}
-     */
-    private function ownerAttributes(): array
-    {
-        $userId = $this->ownerUserId();
-
-        if ($userId !== null) {
-            return ['user_id' => $userId, 'session_id' => null];
-        }
-
-        return ['user_id' => null, 'session_id' => $this->ownerSessionId()];
-    }
-
-    /**
-     * Non-numeric keys (a UUID-keyed user table) fall through to session
-     * scoping rather than being coerced into the integer column.
-     */
-    private function ownerUserId(): ?int
-    {
-        $id = auth()->hasUser() ? auth()->id() : null;
-
-        return is_numeric($id) ? (int) $id : null;
-    }
-
-    private function ownerSessionId(): ?string
-    {
-        $id = session()->getId();
-
-        return $id === '' ? null : $id;
     }
 
     private function truncate(string $sql): string
