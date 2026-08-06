@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConnectionPicker } from './ConnectionPicker'
 import { DataGrid } from './DataGrid'
@@ -12,10 +12,19 @@ import {
   TerminalIcon,
 } from './icons'
 import './db-console.css'
-import { cx, readConsoleMode, readScheme, SCHEMES, writeConsoleMode, writeScheme } from './lib'
+import {
+  cx,
+  readConsoleMode,
+  readScheme,
+  SCHEMES,
+  sendJson,
+  writeConsoleMode,
+  writeScheme,
+} from './lib'
 import { Sidebar } from './Sidebar'
 import { SqlConsole } from './SqlConsole'
 import { DEFAULT_STRINGS, StringsContext, useStrings } from './strings'
+import { useTableDetails } from './useTableDetails'
 
 /**
  * Database Console — a standalone DB explorer (Adminer-style). Renders a schema
@@ -32,9 +41,12 @@ import { DEFAULT_STRINGS, StringsContext, useStrings } from './strings'
  *   every configured connection (a broken one carries `error` instead of metadata).
  * @param {{key: string, name?: string, label?: string, database?: string, driver?: string, mode?: string, confirmWrites?: boolean} | null} [connection]
  *   the live connection — `null` when nothing could be opened (see `fatal`).
- * @param {Array<{name: string, tables: Array}>} [schemas]
+ * @param {Array<{name: string, tables: Array<{name: string, type: string, rowCount: number}>}>} [schemas]
+ *   the shallow tree — a table's columns/indexes/rows are fetched from
+ *   `endpoints.table` when it is selected, never shipped with the page.
+ * @param {Array<string>} [favorites] starred tables as `schema.table` keys.
  * @param {{defaultQuery: string, saved: Array, history: Array}} [sql]
- * @param {{query: string, explain: string, row: string, share: string, saved: string, index: string}} [endpoints]
+ * @param {{query: string, explain: string, row: string, share: string, saved: string, index: string, table: string, favorite: string}} [endpoints]
  *   absolute URLs for every POST/GET the console makes.
  * @param {{name?: string, accent?: string, scheme?: 'light'|'dark'|'auto', logo?: string}} [brand]
  * @param {{explain: boolean, share: boolean, rowEdit: boolean}} [features]
@@ -50,6 +62,7 @@ export function DbConsole({
   connections,
   connection,
   schemas,
+  favorites,
   sql,
   endpoints,
   brand,
@@ -68,6 +81,7 @@ export function DbConsole({
         connections={connections}
         connection={connection}
         schemas={schemas}
+        favorites={favorites}
         sql={sql}
         endpoints={endpoints}
         brand={brand}
@@ -121,6 +135,7 @@ function Console({
   connections,
   connection,
   schemas,
+  favorites,
   sql,
   endpoints,
   brand,
@@ -172,6 +187,47 @@ function Console({
       entries.find((entry) => entry.table.name === selected.name)
     return owner?.schema.name
   }, [entries, selected])
+
+  // The tree carries names only; the selected table's columns and rows are
+  // fetched on demand and cached for as long as the page lives.
+  const {
+    get: getDetails,
+    errorFor: detailErrorFor,
+    load: loadDetails,
+  } = useTableDetails({
+    endpoint: endpoints?.table,
+    csrfToken,
+    connectionKey: connection?.key,
+  })
+
+  useEffect(() => {
+    if (selected && currentSchemaName) {
+      loadDetails(currentSchemaName, selected.name)
+    }
+  }, [selected, currentSchemaName, loadDetails])
+
+  const selectedDetail = selected ? getDetails(currentSchemaName, selected.name) : null
+  const selectedError = selected ? detailErrorFor(currentSchemaName, selected.name) : null
+
+  // Favourites are server-owned (they follow the person, not the browser), but
+  // the star flips immediately and the response is the correction.
+  const [starred, setStarred] = useState(() => favorites ?? [])
+
+  const toggleFavorite = async (schema, table) => {
+    const key = `${schema}.${table}`
+
+    setStarred((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]))
+
+    const { ok, data } = await sendJson(endpoints.favorite, 'POST', csrfToken, {
+      connection: connection?.key,
+      schema,
+      table,
+    })
+
+    if (ok && Array.isArray(data?.favorites)) {
+      setStarred(data.favorites)
+    }
+  }
 
   // Mode is URL-backed (?mode=sql) so a refresh / shared link restores the view.
   const changeMode = (next) => {
@@ -292,6 +348,10 @@ function Console({
                 search={search}
                 onSearch={setSearch}
                 onInsert={mode === 'sql' && sql ? insertIdentifier : undefined}
+                favorites={starred}
+                onToggleFavorite={endpoints?.favorite ? toggleFavorite : undefined}
+                getDetails={getDetails}
+                onLoadDetails={loadDetails}
               />
             </aside>
           )}
@@ -310,9 +370,9 @@ function Console({
                 initialSql={shared?.sql ?? sql?.defaultQuery ?? ''}
                 runEndpoint={endpoints?.query ?? runEndpoint}
               />
-            ) : selected ? (
+            ) : selectedDetail ? (
               <DataGrid
-                table={selected}
+                table={selectedDetail}
                 onJumpTo={jumpTo}
                 structural
                 rowEditing={{
@@ -324,6 +384,8 @@ function Console({
                   confirmWrites: connection?.confirmWrites ?? true,
                 }}
               />
+            ) : selected ? (
+              <TableLoading name={selected.name} error={selectedError} />
             ) : (
               <div className="tw:flex tw:h-full tw:flex-1 tw:items-center tw:justify-center tw:text-sm tw:text-[var(--dc-text-muted)]">
                 {t('explorer.selectTable')}
@@ -332,6 +394,37 @@ function Console({
           </main>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Stands in for the grid while the selected table's columns and rows are on the
+ * wire — a skeleton of the header row and a few body rows, so the switch to real
+ * data does not jump the layout.
+ */
+function TableLoading({ name, error }) {
+  const t = useStrings()
+
+  if (error) {
+    return (
+      <div className="tw:flex tw:h-full tw:flex-1 tw:items-center tw:justify-center tw:px-6">
+        <div className="tw:max-w-md tw:text-center">
+          <AlertIcon className="tw:mx-auto tw:mb-3 tw:h-6 tw:w-6 tw:text-[var(--dc-danger,#dc2626)]" />
+          <p className="tw:text-sm tw:text-[var(--dc-danger,#dc2626)]">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:animate-pulse tw:flex-col tw:gap-3 tw:p-4">
+      <div className="tw:h-4 tw:w-48 tw:rounded tw:bg-[var(--dc-active)]" />
+      <div className="tw:h-7 tw:rounded tw:bg-[var(--dc-active)]" />
+      {[0, 1, 2, 3, 4, 5].map((row) => (
+        <div key={row} className="tw:h-5 tw:rounded tw:bg-[var(--dc-hover)]" />
+      ))}
+      <span className="tw:sr-only">{t('explorer.loadingTable', { table: name })}</span>
     </div>
   )
 }

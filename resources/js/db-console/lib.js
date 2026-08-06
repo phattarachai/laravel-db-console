@@ -219,6 +219,36 @@ export function writeScheme(scheme) {
   }
 }
 
+/** localStorage key for the sidebar's favourites-only filter. */
+const FAVORITES_ONLY_KEY = 'dc.favonly.v1'
+
+/**
+ * Whether the sidebar is filtered to starred tables. A working mode rather than
+ * a one-off filter, so it survives a reload — like the grid's column widths.
+ */
+export function readFavoritesOnly() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  try {
+    return window.localStorage.getItem(FAVORITES_ONLY_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Persist the favourites-only filter (no-op if storage is unavailable). */
+export function writeFavoritesOnly(only) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem(FAVORITES_ONLY_KEY, only ? '1' : '0')
+  } catch {
+    // Private mode / quota — the filter lasts for this session only.
+  }
+}
+
 /**
  * Read the console mode from the URL (`?mode=sql`). Defaults to `explorer`.
  * Lets a refresh / shared link restore the Table-vs-SQL view.
@@ -245,6 +275,39 @@ export function writeConsoleMode(mode) {
     url.searchParams.delete('mode')
   }
   window.history.replaceState(window.history.state, '', url)
+}
+
+/**
+ * One JSON request to a console endpoint. Never throws on a non-2xx — the caller
+ * branches on `status` (409 is the confirmation handshake, 422 a guard / DB
+ * rejection carrying a localised `message`).
+ *
+ * @returns {Promise<{ok: boolean, status: number, data: Record<string, any>}>}
+ */
+export async function sendJson(url, method, csrfToken, body) {
+  const response = await fetch(url, {
+    method,
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-CSRF-TOKEN': csrfToken ?? '',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  return { ok: response.ok, status: response.status, data }
+}
+
+/** Append query params to an endpoint URL, skipping null/undefined values. */
+export function withQuery(url, params) {
+  const search = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== null && value !== undefined),
+  )
+  return search.size === 0 ? url : `${url}${url.includes('?') ? '&' : '?'}${search}`
 }
 
 /** Compact integer formatting for row-count badges (1280 → 1.3k). */

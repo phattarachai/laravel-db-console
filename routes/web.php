@@ -8,6 +8,10 @@ use Phattarachai\DbConsole\Http\Controllers\DbConsoleController;
 Route::get('/', [DbConsoleController::class, 'index'])->name('index');
 Route::get('/s/{token}', [DbConsoleController::class, 'shared'])->name('shared');
 
+Route::get('/table', [DbConsoleController::class, 'table'])->name('table');
+
+Route::post('/favorite', [DbConsoleController::class, 'favorite'])->name('favorite');
+
 Route::post('/query', [DbConsoleController::class, 'query'])->name('query');
 Route::post('/explain', [DbConsoleController::class, 'explain'])->name('explain');
 Route::post('/row', [DbConsoleController::class, 'row'])->name('row');
