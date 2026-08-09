@@ -16,8 +16,7 @@ import { useStrings } from './strings'
  */
 
 /** Shared pill chrome so the static and interactive variants look identical. */
-const PILL =
-  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2 tw:py-1 tw:text-xs tw:text-[var(--dc-text-muted)]'
+const PILL = 'dc-conn-pill'
 
 /**
  * The read-only marker inside the pill: a faint lock, and nothing at all when the
@@ -33,11 +32,8 @@ function ReadLock({ mode }) {
 
   return (
     <>
-      <span className="tw:text-[var(--dc-border)]">·</span>
-      <LockIcon
-        className="tw:h-3.5 tw:w-3.5 tw:text-[var(--dc-text-faint)]"
-        aria-label={t('toolbar.modeRead')}
-      />
+      <span className="dc-conn-sep">·</span>
+      <LockIcon className="dc-conn-lock" aria-label={t('toolbar.modeRead')} />
     </>
   )
 }
@@ -48,14 +44,7 @@ function ModeChip({ mode }) {
   const writable = mode === 'write'
 
   return (
-    <span
-      className={cx(
-        'tw:ml-auto tw:shrink-0 tw:rounded tw:border tw:px-1.5 tw:py-0.5 tw:text-[10px]',
-        writable
-          ? 'tw:border-amber-500/40 tw:bg-amber-500/10 tw:font-semibold tw:text-amber-600'
-          : 'tw:border-[var(--dc-border)] tw:text-[var(--dc-text-muted)]',
-      )}
-    >
+    <span className={cx('dc-conn-mode', writable && 'on')}>
       {t(writable ? 'toolbar.modeWrite' : 'toolbar.modeRead')}
     </span>
   )
@@ -67,13 +56,11 @@ function ConnectionPill({ connection }) {
 
   return (
     <div className={PILL} title={connection.mode === 'write' ? undefined : t('toolbar.modeRead')}>
-      <DatabaseIcon className="tw:h-3.5 tw:w-3.5 tw:text-[var(--dc-table-icon)]" />
-      <span className="tw:font-mono tw:text-[var(--dc-text)]">
+      <DatabaseIcon className="dc-conn-dbicon" />
+      <span className="dc-conn-name">
         {connection.database ?? connection.label ?? connection.key}
       </span>
-      {connection.driver && (
-        <span className="tw:text-[var(--dc-text-faint)]">· {connection.driver}</span>
-      )}
+      {connection.driver && <span className="dc-conn-driver">· {connection.driver}</span>}
       <ReadLock mode={connection.mode} />
     </div>
   )
@@ -132,36 +119,26 @@ export function ConnectionPicker({ connections, connection, indexEndpoint }) {
   }
 
   return (
-    <div ref={rootRef} className="tw:relative">
+    <div ref={rootRef} className="dc-conn-root">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
         title={t('toolbar.switchConnection')}
-        className={cx(PILL, 'tw:hover:bg-[var(--dc-hover)]')}
+        className={cx(PILL, 'dc-conn-trigger')}
       >
-        <DatabaseIcon className="tw:h-3.5 tw:w-3.5 tw:text-[var(--dc-table-icon)]" />
-        <span className="tw:font-mono tw:text-[var(--dc-text)]">
+        <DatabaseIcon className="dc-conn-dbicon" />
+        <span className="dc-conn-name">
           {connection?.database ?? connection?.label ?? connection?.key ?? '—'}
         </span>
-        {connection?.driver && (
-          <span className="tw:text-[var(--dc-text-faint)]">· {connection.driver}</span>
-        )}
+        {connection?.driver && <span className="dc-conn-driver">· {connection.driver}</span>}
         <ReadLock mode={connection?.mode} />
-        <ChevronIcon
-          className={cx(
-            'tw:h-3 tw:w-3 tw:text-[var(--dc-text-faint)]',
-            open ? 'tw:-rotate-90' : 'tw:rotate-90',
-          )}
-        />
+        <ChevronIcon className={cx('dc-conn-chevron', open && 'on')} />
       </button>
 
       {open && (
-        <div
-          role="listbox"
-          className="tw:absolute tw:top-full tw:left-0 tw:z-30 tw:mt-1 tw:max-h-80 tw:w-72 tw:overflow-y-auto tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:py-1 tw:shadow-lg"
-        >
+        <div role="listbox" className="dc-conn-menu">
           {list.map((item) => {
             const active = item.key === connection?.key
             const broken = Boolean(item.error)
@@ -175,22 +152,12 @@ export function ConnectionPicker({ connections, connection, indexEndpoint }) {
                 disabled={broken}
                 title={item.error ?? undefined}
                 onClick={() => select(item)}
-                className={cx(
-                  'tw:flex tw:w-full tw:items-center tw:gap-2 tw:px-2.5 tw:py-1.5 tw:text-left tw:text-xs',
-                  broken
-                    ? 'tw:cursor-not-allowed tw:text-[var(--dc-text-faint)]'
-                    : 'tw:text-[var(--dc-text)] tw:hover:bg-[var(--dc-hover)]',
-                  active && 'tw:bg-[var(--dc-accent-soft)]',
-                )}
+                className={cx('dc-conn-option', broken && 'broken', active && 'on')}
               >
-                <span className="tw:truncate tw:font-medium">{item.label || item.key}</span>
-                {item.database && (
-                  <span className="tw:truncate tw:font-mono tw:text-[var(--dc-text-muted)]">
-                    {item.database}
-                  </span>
-                )}
+                <span className="dc-conn-label">{item.label || item.key}</span>
+                {item.database && <span className="dc-conn-db">{item.database}</span>}
                 {broken ? (
-                  <AlertIcon className="tw:ml-auto tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-danger,#dc2626)]" />
+                  <AlertIcon className="dc-conn-alert" />
                 ) : (
                   <ModeChip mode={item.mode} />
                 )}

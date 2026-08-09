@@ -103,27 +103,27 @@ function BrandMark({ brand, label, homeHint }) {
   const inner = (
     <>
       {brand?.logo ? (
-        <img src={brand.logo} alt="" className="tw:h-5 tw:w-auto" />
+        <img src={brand.logo} alt="" className="dc-top-brand-logo" />
       ) : (
-        <span className="tw:flex tw:h-6 tw:w-6 tw:items-center tw:justify-center tw:rounded tw:bg-[var(--dc-accent)] tw:text-[var(--dc-accent-foreground)]">
-          <TableIcon className="tw:h-3.5 tw:w-3.5" />
+        <span className="dc-top-brand-badge">
+          <TableIcon className="dc-top-brand-badge-icon" />
         </span>
       )}
-      <span className="tw:text-sm tw:font-semibold tw:text-[var(--dc-text)]">
+      <span className="dc-top-brand-name">
         {brand?.name || label}
       </span>
     </>
   )
 
   if (!brand?.url) {
-    return <div className="tw:flex tw:items-center tw:gap-2">{inner}</div>
+    return <div className="dc-top-brand">{inner}</div>
   }
 
   return (
     <a
       href={brand.url}
       title={homeHint}
-      className="tw:-mx-1 tw:flex tw:items-center tw:gap-2 tw:rounded tw:px-1 tw:py-0.5 tw:hover:bg-[var(--dc-hover)]"
+      className="dc-top-brand link"
     >
       {inner}
     </a>
@@ -256,7 +256,7 @@ function Console({
   return (
     <div
       className={cx(
-        'dc-root tw:flex tw:h-screen tw:flex-col tw:font-sans',
+        'dc-root dc-shell',
         // 'auto' → leave it to the host app's own `.dark` ancestor. 'light' is
         // stamped too, so it can override a host that is itself dark.
         scheme === 'dark' && 'dark',
@@ -265,14 +265,14 @@ function Console({
       style={rootStyle}
     >
       {/* Toolbar */}
-      <header className="tw:flex tw:shrink-0 tw:items-center tw:gap-3 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-toolbar)] tw:px-3 tw:py-2">
+      <header className="dc-top-bar">
         <button
           type="button"
           onClick={() => setSidebarOpen((v) => !v)}
-          className="tw:rounded tw:p-1.5 tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]"
+          className="dc-top-icon"
           title={t('toolbar.toggleSidebar')}
         >
-          <MenuIcon className="tw:h-4 tw:w-4" />
+          <MenuIcon className="dc-top-icon-glyph" />
         </button>
 
         {/* The brand doubles as the way out: `brand.url` links back to the host app. */}
@@ -284,11 +284,11 @@ function Console({
           indexEndpoint={endpoints?.index}
         />
 
-        <div className="tw:ml-auto tw:flex tw:items-center tw:gap-3">
+        <div className="dc-top-actions">
           <SchemeToggle scheme={scheme} onCycle={cycleScheme} />
 
           {sql && !fatalMessage && (
-            <div className="tw:flex tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:p-0.5">
+            <div className="dc-top-modes">
               <ModeButton
                 active={mode === 'explorer'}
                 onClick={() => changeMode('explorer')}
@@ -309,15 +309,15 @@ function Console({
       </header>
 
       {shared?.expired && shareNoticeOpen && (
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:border-amber-500/40 tw:bg-amber-500/10 tw:px-3 tw:py-1.5 tw:text-xs tw:text-amber-600">
-          <AlertIcon className="tw:h-3.5 tw:w-3.5 tw:shrink-0" />
+        <div className="dc-top-notice">
+          <AlertIcon className="dc-top-notice-icon" />
           <span>{t('errors.shareExpired')}</span>
           <button
             type="button"
             onClick={() => setShareNoticeOpen(false)}
             title={t('common.dismiss')}
             aria-label={t('common.dismiss')}
-            className="tw:ml-auto tw:rounded tw:px-1.5 tw:py-0.5 tw:font-medium tw:hover:bg-amber-500/20"
+            className="dc-top-notice-close"
           >
             ✕
           </button>
@@ -326,21 +326,21 @@ function Console({
 
       {/* Body — replaced wholesale when the console cannot talk to a database. */}
       {fatalMessage ? (
-        <div className="tw:flex tw:min-h-0 tw:flex-1 tw:items-center tw:justify-center tw:bg-[var(--dc-bg)] tw:px-6">
-          <div className="tw:max-w-md tw:text-center">
-            <AlertIcon className="tw:mx-auto tw:mb-3 tw:h-8 tw:w-8 tw:text-[var(--dc-danger,#dc2626)]" />
-            <p className="tw:text-sm tw:font-semibold tw:text-[var(--dc-danger,#dc2626)]">
+        <div className="dc-shell-fatal">
+          <div className="dc-shell-msg">
+            <AlertIcon className="dc-shell-fatal-icon" />
+            <p className="dc-shell-fatal-title">
               {fatalMessage}
             </p>
-            <p className="tw:mt-2 tw:text-xs tw:text-[var(--dc-text-muted)]">
+            <p className="dc-shell-fatal-hint">
               {t('errors.fatalHint')}
             </p>
           </div>
         </div>
       ) : (
-        <div className="tw:flex tw:min-h-0 tw:flex-1">
+        <div className="dc-shell-body">
           {sidebarOpen && (
-            <aside className="tw:w-64 tw:shrink-0 tw:border-r tw:border-[var(--dc-border)]">
+            <aside className="dc-shell-side">
               <Sidebar
                 schemas={schemaList}
                 selected={selected}
@@ -356,7 +356,7 @@ function Console({
             </aside>
           )}
 
-          <main className="tw:flex tw:min-w-0 tw:flex-1 tw:bg-[var(--dc-bg)]">
+          <main className="dc-shell-main">
             {mode === 'sql' && sql ? (
               <SqlConsole
                 sql={sql}
@@ -387,7 +387,7 @@ function Console({
             ) : selected ? (
               <TableLoading name={selected.name} error={selectedError} />
             ) : (
-              <div className="tw:flex tw:h-full tw:flex-1 tw:items-center tw:justify-center tw:text-sm tw:text-[var(--dc-text-muted)]">
+              <div className="dc-shell-empty">
                 {t('explorer.selectTable')}
               </div>
             )}
@@ -408,23 +408,23 @@ function TableLoading({ name, error }) {
 
   if (error) {
     return (
-      <div className="tw:flex tw:h-full tw:flex-1 tw:items-center tw:justify-center tw:px-6">
-        <div className="tw:max-w-md tw:text-center">
-          <AlertIcon className="tw:mx-auto tw:mb-3 tw:h-6 tw:w-6 tw:text-[var(--dc-danger,#dc2626)]" />
-          <p className="tw:text-sm tw:text-[var(--dc-danger,#dc2626)]">{error}</p>
+      <div className="dc-shell-load-error">
+        <div className="dc-shell-msg">
+          <AlertIcon className="dc-shell-load-error-icon" />
+          <p className="dc-shell-load-error-text">{error}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:animate-pulse tw:flex-col tw:gap-3 tw:p-4">
-      <div className="tw:h-4 tw:w-48 tw:rounded tw:bg-[var(--dc-active)]" />
-      <div className="tw:h-7 tw:rounded tw:bg-[var(--dc-active)]" />
+    <div className="dc-shell-load">
+      <div className="dc-shell-load-title" />
+      <div className="dc-shell-load-head" />
       {[0, 1, 2, 3, 4, 5].map((row) => (
-        <div key={row} className="tw:h-5 tw:rounded tw:bg-[var(--dc-hover)]" />
+        <div key={row} className="dc-shell-load-row" />
       ))}
-      <span className="tw:sr-only">{t('explorer.loadingTable', { table: name })}</span>
+      <span className="dc-shell-sr">{t('explorer.loadingTable', { table: name })}</span>
     </div>
   )
 }
@@ -451,9 +451,9 @@ function SchemeToggle({ scheme, onCycle }) {
       onClick={onCycle}
       title={hint}
       aria-label={hint}
-      className="tw:rounded tw:p-1.5 tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]"
+      className="dc-top-icon"
     >
-      <Icon className="tw:h-4 tw:w-4" />
+      <Icon className="dc-top-icon-glyph" />
     </button>
   )
 }
@@ -463,14 +463,9 @@ function ModeButton({ active, onClick, icon: Icon, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={cx(
-        'tw:flex tw:items-center tw:gap-1.5 tw:rounded tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium',
-        active
-          ? 'tw:bg-[var(--dc-accent)] tw:text-[var(--dc-accent-foreground)]'
-          : 'tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-top-mode', active && 'on')}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-top-mode-icon" />
       {children}
     </button>
   )

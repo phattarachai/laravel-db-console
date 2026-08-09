@@ -13,8 +13,9 @@ use Throwable;
 
 /**
  * Checks the host-app requirements the console cannot work around — the driver,
- * the migrations, the routes, and the two build-tool wiring steps — so a failed
- * install reports what is missing instead of a blank page.
+ * the migrations, the routes, the published page and the Vite alias — so a failed
+ * install reports what is missing instead of a blank page. The module ships its
+ * own scoped CSS, so there is nothing to verify in the host's Tailwind setup.
  */
 final class DoctorCommand extends Command
 {
@@ -54,15 +55,6 @@ final class DoctorCommand extends Command
         $failures += $this->check('Vite alias @db-console', fn (): ?string => $this->fileContains(base_path('vite.config.js'), '@db-console')
             ? null
             : 'Add a resolve.alias entry for @db-console — see the package README.');
-
-        $failures += $this->check('Tailwind prefix(tw)', fn (): ?string => $this->fileContains(resource_path('css/app.css'), 'prefix(tw)')
-            ? null
-            : "The module's markup needs `@import 'tailwindcss' prefix(tw);` in your Tailwind entry CSS.");
-
-        $failures += $this->check('Tailwind @source for the package',
-            fn (): ?string => $this->fileContains(resource_path('css/app.css'), 'laravel-db-console')
-                ? null
-                : 'Add an @source line covering the package JSX, or Tailwind will emit none of its classes.');
 
         $this->newLine();
 

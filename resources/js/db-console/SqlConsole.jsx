@@ -273,24 +273,24 @@ export function SqlConsole({
   }
 
   return (
-    <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:bg-[var(--dc-bg)]">
+    <div className="dc-sql-root">
       {/* Toolbar */}
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-3 tw:py-2">
+      <div className="dc-sql-toolbar">
         <button
           type="button"
           onClick={() => execute(text)}
           disabled={running || !guard.ok}
-          className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-md tw:bg-[var(--dc-accent)] tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-[var(--dc-accent-foreground)] tw:hover:opacity-90 tw:disabled:cursor-not-allowed tw:disabled:opacity-40"
+          className="dc-sql-run"
           title={t('sql.runHint')}
         >
-          <PlayIcon className="tw:h-3.5 tw:w-3.5" />
+          <PlayIcon className="dc-sql-ico" />
           {running ? t('sql.running') : t('sql.run')}
         </button>
         {!isEmpty && <GuardChip guard={guard} confirmWrites={confirmWrites} />}
 
         {/* One segmented cluster: only Run carries a label, since only Run has a
             shortcut and a consequence. The rest live in their tooltips. */}
-        <div className="tw:flex tw:items-center tw:overflow-hidden tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)]">
+        <div className="dc-sql-cluster">
           <ToolbarIcon
             onClick={() => setText((current) => formatSql(current))}
             label={t('sql.format')}
@@ -338,13 +338,13 @@ export function SqlConsole({
       {share && <SharePanel share={share} />}
 
       {/* Editor */}
-      <div className="tw:flex tw:min-h-[140px] tw:basis-2/5 tw:flex-col">
+      <div className="dc-sql-editor-wrap">
         <SqlEditor ref={editorRef} value={text} onChange={setText} onRun={() => execute(text)} />
       </div>
 
       {/* Lower panel */}
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border-t tw:border-[var(--dc-border)]">
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-2">
+      <div className="dc-sql-lower">
+        <div className="dc-sql-tabs">
           <Tab active={tab === 'result'} onClick={() => setTab('result')} icon={PlayIcon}>
             {t('sql.tabs.result')}
           </Tab>
@@ -373,7 +373,7 @@ export function SqlConsole({
           />
         )}
 
-        <div className="tw:min-h-0 tw:flex-1 tw:overflow-hidden">
+        <div className="dc-sql-body">
           {tab === 'result' && <ResultPanel result={result} error={error} running={running} />}
           {tab === 'plan' && plan !== null && <PlanPanel plan={plan} />}
           {tab === 'saved' && (
@@ -399,9 +399,9 @@ function ToolbarIcon({ onClick, disabled, label, title, icon: Icon }) {
       disabled={disabled}
       title={title ?? label}
       aria-label={label}
-      className="tw:flex tw:h-7 tw:w-8 tw:items-center tw:justify-center tw:border-l tw:border-[var(--dc-border)] tw:text-[var(--dc-text-muted)] tw:first:border-l-0 tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)] tw:disabled:cursor-not-allowed tw:disabled:opacity-40"
+      className="dc-sql-tool"
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-sql-ico" />
     </button>
   )
 }
@@ -430,16 +430,13 @@ function GuardChip({ guard, confirmWrites }) {
       title={title}
       aria-label={label}
       className={cx(
-        'tw:flex tw:h-7 tw:w-7 tw:items-center tw:justify-center tw:rounded-md tw:border',
-        !guard.ok &&
-          'tw:border-[color-mix(in_srgb,var(--dc-key)_40%,transparent)] tw:bg-[color-mix(in_srgb,var(--dc-key)_12%,transparent)] tw:text-[var(--dc-key)]',
-        isWrite && 'tw:border-amber-500/40 tw:bg-amber-500/10 tw:text-amber-500',
-        guard.ok &&
-          !isWrite &&
-          'tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:text-[var(--dc-text-muted)]',
+        'dc-sql-chip',
+        !guard.ok && 'blocked',
+        isWrite && 'write',
+        guard.ok && !isWrite && 'read',
       )}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-sql-ico" />
     </span>
   )
 }
@@ -453,31 +450,31 @@ function ConfirmPanel({ statement, word, typed, onType, onCancel, onConfirm, run
   const matches = typed === word
 
   return (
-    <div className="tw:shrink-0 tw:border-b tw:border-amber-500/40 tw:bg-amber-500/10 tw:px-4 tw:py-3">
-      <div className="tw:flex tw:items-start tw:gap-2.5">
-        <AlertIcon className="tw:mt-0.5 tw:h-4 tw:w-4 tw:shrink-0 tw:text-amber-500" />
-        <div className="tw:min-w-0 tw:flex-1">
-          <div className="tw:text-sm tw:font-semibold tw:text-[var(--dc-text)]">
+    <div className="dc-sql-confirm">
+      <div className="dc-sql-confirm-row">
+        <AlertIcon className="dc-sql-note-icon" />
+        <div className="dc-sql-confirm-body">
+          <div className="dc-sql-confirm-title">
             {t('sql.confirm.title')}
           </div>
-          <pre className="tw:mt-2 tw:max-h-32 tw:overflow-auto tw:rounded tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:whitespace-pre-wrap tw:text-[var(--dc-text)]">
+          <pre className="dc-sql-confirm-sql">
             {statement}
           </pre>
-          <div className="tw:mt-2 tw:text-xs tw:text-[var(--dc-text-muted)]">
+          <div className="dc-sql-confirm-hint">
             {t('sql.confirm.body', { word })}
           </div>
-          <div className="tw:mt-2 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+          <div className="dc-sql-confirm-actions">
             <input
               type="text"
               value={typed}
               onChange={(event) => onType(event.target.value)}
               placeholder={t('sql.confirm.placeholder', { word })}
-              className="tw:w-32 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2 tw:py-1.5 tw:font-mono tw:text-xs tw:text-[var(--dc-text)] tw:outline-none tw:focus:border-amber-500"
+              className="dc-sql-confirm-input"
             />
             <button
               type="button"
               onClick={onCancel}
-              className="tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2.5 tw:py-1.5 tw:text-xs tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]"
+              className="dc-sql-confirm-cancel"
             >
               {t('sql.confirm.cancel')}
             </button>
@@ -485,9 +482,9 @@ function ConfirmPanel({ statement, word, typed, onType, onCancel, onConfirm, run
               type="button"
               onClick={onConfirm}
               disabled={!matches || running}
-              className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-md tw:bg-amber-500 tw:px-2.5 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-white tw:hover:opacity-90 tw:disabled:cursor-not-allowed tw:disabled:opacity-40"
+              className="dc-sql-confirm-run"
             >
-              <PlayIcon className="tw:h-3.5 tw:w-3.5" />
+              <PlayIcon className="dc-sql-ico" />
               {t('sql.confirm.run')}
             </button>
           </div>
@@ -502,22 +499,22 @@ function SharePanel({ share }) {
   const t = useStrings()
 
   return (
-    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-3 tw:py-1.5 tw:text-xs tw:text-[var(--dc-text-muted)]">
+    <div className="dc-sql-share">
       {share.copied ? (
         <>
-          <CheckIcon className="tw:h-3.5 tw:w-3.5 tw:text-[var(--dc-accent)]" />
+          <CheckIcon className="dc-sql-share-check" />
           {t('sql.shareCopied')}
         </>
       ) : (
         <>
-          <LinkIcon className="tw:h-3.5 tw:w-3.5" />
+          <LinkIcon className="dc-sql-ico" />
           {t('sql.shareFallback')}
           <input
             type="text"
             readOnly
             value={share.url}
             onFocus={(event) => event.target.select()}
-            className="tw:min-w-0 tw:flex-1 tw:rounded tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2 tw:py-1 tw:font-mono tw:text-[11px] tw:text-[var(--dc-text)] tw:outline-none"
+            className="dc-sql-share-input"
           />
         </>
       )}
@@ -530,7 +527,7 @@ function ResultPanel({ result, error, running }) {
 
   if (running) {
     return (
-      <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:text-sm tw:text-[var(--dc-text-muted)]">
+      <div className="dc-sql-state">
         {t('sql.result.running')}
       </div>
     )
@@ -539,21 +536,21 @@ function ResultPanel({ result, error, running }) {
   if (error) {
     const isGuard = error.kind !== 'server'
     return (
-      <div className="tw:flex tw:h-full tw:items-start tw:justify-center tw:p-6">
-        <div className="tw:flex tw:max-w-lg tw:items-start tw:gap-2.5 tw:rounded-md tw:border tw:border-[color-mix(in_srgb,var(--dc-key)_40%,transparent)] tw:bg-[color-mix(in_srgb,var(--dc-key)_12%,transparent)] tw:px-4 tw:py-3 tw:text-sm tw:text-[var(--dc-text)]">
-          <AlertIcon className="tw:mt-0.5 tw:h-4 tw:w-4 tw:shrink-0 tw:text-[var(--dc-key)]" />
+      <div className="dc-sql-notice-wrap">
+        <div className="dc-sql-notice err">
+          <AlertIcon className="dc-sql-error-icon" />
           <div>
-            <div className="tw:font-semibold">
+            <div className="dc-sql-notice-title">
               {isGuard ? t('guard.title') : t('sql.error.title')}
             </div>
-            <div className="tw:mt-0.5 tw:text-[var(--dc-text-muted)]">
+            <div className="dc-sql-notice-detail">
               {isGuard ? (
                 <>
-                  {error.keyword && <span className="tw:font-mono">{error.keyword}</span>} —{' '}
+                  {error.keyword && <span className="dc-sql-mono">{error.keyword}</span>} —{' '}
                   {t(error.messageKey, error.replacements)} {t('guard.hint')}
                 </>
               ) : (
-                <span className="tw:font-mono tw:break-words">{error.reason}</span>
+                <span className="dc-sql-reason">{error.reason}</span>
               )}
             </div>
           </div>
@@ -564,7 +561,7 @@ function ResultPanel({ result, error, running }) {
 
   if (!result) {
     return (
-      <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:text-sm tw:text-[var(--dc-text-muted)]">
+      <div className="dc-sql-state">
         {t('sql.result.empty')}
       </div>
     )
@@ -573,12 +570,12 @@ function ResultPanel({ result, error, running }) {
   // A write returns no result set — report the row count instead of an empty grid.
   if (result.kind === 'write' || !Array.isArray(result.rows) || !Array.isArray(result.columns)) {
     return (
-      <div className="tw:flex tw:h-full tw:items-start tw:justify-center tw:p-6">
-        <div className="tw:flex tw:max-w-lg tw:items-start tw:gap-2.5 tw:rounded-md tw:border tw:border-amber-500/40 tw:bg-amber-500/10 tw:px-4 tw:py-3 tw:text-sm tw:text-[var(--dc-text)]">
-          <CheckIcon className="tw:mt-0.5 tw:h-4 tw:w-4 tw:shrink-0 tw:text-amber-500" />
+      <div className="dc-sql-notice-wrap">
+        <div className="dc-sql-notice ok">
+          <CheckIcon className="dc-sql-note-icon" />
           <div>
-            <div className="tw:font-semibold">{t('sql.result.writeTitle')}</div>
-            <div className="tw:mt-0.5 tw:text-[var(--dc-text-muted)]">
+            <div className="dc-sql-notice-title">{t('sql.result.writeTitle')}</div>
+            <div className="dc-sql-notice-detail">
               {t('sql.result.rowsAffected', { count: result.rowsAffected ?? 0 })} ·{' '}
               {t('sql.result.elapsed', { ms: result.elapsedMs ?? 0 })}
             </div>
@@ -619,11 +616,11 @@ function PlanPanel({ plan }) {
   const t = useStrings()
 
   return (
-    <div className="tw:h-full tw:overflow-auto tw:px-4 tw:py-3">
-      <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:text-[var(--dc-text-muted)]">
+    <div className="dc-sql-plan">
+      <div className="dc-sql-plan-title">
         {t('sql.plan.title')}
       </div>
-      <pre className="tw:font-mono tw:text-xs tw:whitespace-pre tw:text-[var(--dc-text)]">
+      <pre className="dc-sql-plan-pre">
         {plan.join('\n')}
       </pre>
     </div>
@@ -635,25 +632,25 @@ function SavedList({ items, onPick, onRemove }) {
 
   if (items.length === 0) {
     return (
-      <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:text-sm tw:text-[var(--dc-text-muted)]">
+      <div className="dc-sql-state">
         {t('sql.saved.empty')}
       </div>
     )
   }
   return (
-    <ul className="tw:h-full tw:divide-y tw:divide-[var(--dc-border)] tw:overflow-auto">
+    <ul className="dc-sql-list">
       {items.map((q) => (
-        <li key={q.id} className="tw:group tw:relative tw:flex tw:items-stretch">
+        <li key={q.id} className="dc-sql-saved-item">
           <button
             type="button"
             onClick={() => onPick(q)}
-            className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1 tw:px-4 tw:py-2.5 tw:pr-10 tw:text-left tw:hover:bg-[var(--dc-hover)]"
+            className="dc-sql-saved-pick"
           >
-            <span className="tw:flex tw:items-center tw:gap-2 tw:text-sm tw:font-medium tw:text-[var(--dc-text)]">
-              <BookmarkIcon className="tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-table-icon)]" />
+            <span className="dc-sql-saved-name">
+              <BookmarkIcon className="dc-sql-saved-icon" />
               {q.name}
             </span>
-            <span className="tw:truncate tw:font-mono tw:text-xs tw:text-[var(--dc-text-muted)]">
+            <span className="dc-sql-saved-sql">
               {oneLine(q.sql)}
             </span>
           </button>
@@ -662,9 +659,9 @@ function SavedList({ items, onPick, onRemove }) {
             onClick={() => onRemove(q.id)}
             title={t('sql.saved.remove')}
             aria-label={t('sql.saved.removeLabel', { name: q.name })}
-            className="tw:absolute tw:top-1/2 tw:right-2 tw:-translate-y-1/2 tw:rounded tw:p-1.5 tw:text-[var(--dc-text-faint)] tw:opacity-0 tw:group-hover:opacity-100 tw:hover:bg-[color-mix(in_srgb,var(--dc-key)_14%,transparent)] tw:hover:text-[var(--dc-key)] tw:focus:opacity-100"
+            className="dc-sql-saved-remove"
           >
-            <TrashIcon className="tw:h-3.5 tw:w-3.5" />
+            <TrashIcon className="dc-sql-ico" />
           </button>
         </li>
       ))}
@@ -678,30 +675,30 @@ function HistoryList({ items, onPick }) {
 
   if (items.length === 0) {
     return (
-      <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:text-sm tw:text-[var(--dc-text-muted)]">
+      <div className="dc-sql-state">
         {t('sql.history.empty')}
       </div>
     )
   }
   return (
-    <ul className="tw:h-full tw:divide-y tw:divide-[var(--dc-border)] tw:overflow-auto">
+    <ul className="dc-sql-list">
       {items.map((h, i) => (
         <li key={h.id ?? i}>
           <button
             type="button"
             onClick={() => onPick(h)}
-            className="tw:flex tw:w-full tw:items-center tw:gap-3 tw:px-4 tw:py-2 tw:text-left tw:hover:bg-[var(--dc-hover)]"
+            className="dc-sql-history-item"
           >
-            <ClockIcon className="tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-text-faint)]" />
-            <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:text-[var(--dc-text)]">
+            <ClockIcon className="dc-sql-history-icon" />
+            <span className="dc-sql-history-sql">
               {oneLine(h.sql)}
             </span>
             {h.status && h.status !== 'ok' && (
-              <span className="tw:shrink-0 tw:rounded tw:border tw:border-amber-500/40 tw:bg-amber-500/10 tw:px-1.5 tw:py-0.5 tw:text-[10px] tw:text-amber-500">
+              <span className="dc-sql-history-fail">
                 {t('sql.history.failed')}
               </span>
             )}
-            <span className="tw:shrink-0 tw:text-[11px] tw:text-[var(--dc-text-faint)]">
+            <span className="dc-sql-history-meta">
               {t('sql.history.meta', {
                 rows: h.rows ?? '–',
                 ms: h.elapsedMs ?? 0,
@@ -720,14 +717,9 @@ function Tab({ active, onClick, icon: Icon, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={cx(
-        'tw:flex tw:items-center tw:gap-1.5 tw:border-b-2 tw:px-3 tw:py-2 tw:text-xs tw:font-medium',
-        active
-          ? 'tw:border-[var(--dc-accent)] tw:text-[var(--dc-accent)]'
-          : 'tw:border-transparent tw:text-[var(--dc-text-muted)] tw:hover:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-sql-tab', active && 'on')}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-sql-ico" />
       {children}
     </button>
   )

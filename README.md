@@ -40,13 +40,15 @@ half-working:
 - **PostgreSQL only.** A non-`pgsql` connection fails with a message naming the connection and its driver. MySQL/SQLite
   are not supported.
 - **Inertia v3 + React 19** in the host app. The console is an Inertia page, not a Blade view.
-- **Tailwind v4 with the `tw` prefix.** The module's markup uses `tw:`-prefixed utilities, so the host must
-  `@import 'tailwindcss' prefix(tw);` and `@source` the package's JSX.
 - The host app **builds its own assets** — nothing is precompiled or published as a bundle.
 - PHP 8.4+, Laravel 11/12/13.
 
-Run `php artisan db-console:doctor` at any point: it checks the driver, the migrations, the routes, the published page,
-the Vite alias and both Tailwind requirements, and tells you exactly which one is missing.
+**No Tailwind, and no `@source` line.** The console ships plain CSS scoped under `.dc-root`, imported by the module
+itself — so it renders correctly in a host with any CSS setup, or none. Re-skin it by overriding the `--dc-*` tokens
+(see [Theming](#theming)).
+
+Run `php artisan db-console:doctor` at any point: it checks the driver, the migrations, the routes, the published page
+and the Vite alias, and tells you exactly which one is missing.
 
 ## Install
 
@@ -57,7 +59,7 @@ php artisan vendor:publish --tag=db-console-inertia
 php artisan migrate
 ```
 
-Then wire the two build-tool bits. In `vite.config.js`:
+Then add the module alias in `vite.config.js`:
 
 ```js
 import path from 'node:path'
@@ -74,27 +76,12 @@ export default defineConfig({
 })
 ```
 
-In your Tailwind entry CSS:
-
-```css
-@import 'tailwindcss' prefix(tw);
-@source '../../vendor/phattarachai/laravel-db-console/resources/js/**/*.jsx';
-@custom-variant dark (&:where(.dark, .dark *));
-```
-
-Then `npm run build`, and open `/db-console`.
+Then `npm run build`, and open `/db-console`. No Tailwind entry, `@source`, or `prefix()` is needed — the module
+imports its own scoped stylesheet.
 
 Only the Inertia **page** is published, into `resources/js/pages/DbConsole.jsx` — Laravel's
 `import.meta.glob('./pages/**/*.jsx')` never leaves that directory. The module itself stays in `vendor/` and is reached
 through the alias, so there is no second copy to drift out of sync.
-
-### Why the `tw` prefix is mandatory
-
-Every utility class in the module is written `tw:flex`, `tw:text-sm`, and so on. Tailwind v4 only understands that
-form when the entry CSS declares `prefix(tw)`. A host on the default (prefix-less) setup will render the console
-completely unstyled. There is no compiled-CSS fallback — that was considered and declined, because a prebuilt
-stylesheet cannot follow your theme tokens. `db-console:doctor` checks both the `prefix(tw)` declaration and the
-`@source` line.
 
 ## Access
 

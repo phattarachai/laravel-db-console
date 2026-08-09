@@ -87,11 +87,11 @@ export const SqlEditor = forwardRef(function SqlEditor({ value, onChange, onRun 
   }
 
   return (
-    <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden tw:bg-[var(--dc-editor-bg)]">
+    <div className="dc-sql-editor">
       <div
         ref={gutterRef}
         aria-hidden
-        className="dc-editor-layer tw:overflow-hidden tw:border-r tw:border-[var(--dc-border)] tw:bg-[var(--dc-editor-gutter)] tw:text-right tw:text-[var(--dc-text-faint)] tw:select-none"
+        className="dc-editor-layer dc-sql-gutter"
         style={{ paddingLeft: 10, paddingRight: 10 }}
       >
         {Array.from({ length: lineCount }, (_, i) => (
@@ -99,11 +99,11 @@ export const SqlEditor = forwardRef(function SqlEditor({ value, onChange, onRun 
         ))}
       </div>
 
-      <div className="tw:relative tw:min-w-0 tw:flex-1">
+      <div className="dc-sql-body">
         <pre
           ref={highlightRef}
           aria-hidden
-          className="dc-editor-layer dc-editor-highlight tw:absolute tw:inset-0 tw:overflow-auto"
+          className="dc-editor-layer dc-editor-highlight dc-sql-layer"
         >
           {tokens.map((tok, i) => {
             const cls =
@@ -136,7 +136,7 @@ export const SqlEditor = forwardRef(function SqlEditor({ value, onChange, onRun 
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
-          className="dc-editor-layer dc-editor-input tw:absolute tw:inset-0 tw:h-full tw:w-full tw:overflow-auto"
+          className="dc-editor-layer dc-editor-input dc-sql-input"
           placeholder={t('sql.editorPlaceholder')}
         />
       </div>

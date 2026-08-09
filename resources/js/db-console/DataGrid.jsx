@@ -492,17 +492,17 @@ export function DataGrid({
   }
 
   return (
-    <div className="tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:flex-col">
+    <div className="dc-grid-root">
       {/* Header bar */}
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-3 tw:gap-y-2 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-4 tw:py-2.5">
-        <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+      <div className="dc-grid-head">
+        <div className="dc-grid-titlebox">
           {table.type === 'view' && (
-            <ViewIcon className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-[var(--dc-view-icon)]" />
+            <ViewIcon className="dc-grid-view-icon" />
           )}
-          <h2 className="tw:truncate tw:font-mono tw:text-sm tw:font-semibold tw:text-[var(--dc-text)]">
+          <h2 className="dc-grid-title">
             {title ?? table.name}
           </h2>
-          <span className="tw:shrink-0 tw:text-xs tw:text-[var(--dc-text-muted)]">
+          <span className="dc-grid-subtitle">
             {subtitle ??
               t('grid.subtitle', {
                 columns: table.columns.length,
@@ -518,7 +518,7 @@ export function DataGrid({
         {/* Structure | Data as one icon-only segmented switch, the same shape the
             SQL toolbar uses: the labels said what the icons already say. */}
         {structural && (
-          <div className="tw:flex tw:items-center tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)]">
+          <div className="dc-grid-segbar">
             <SegmentButton
               active={view === 'structure'}
               onClick={() => setView('structure')}
@@ -535,9 +535,9 @@ export function DataGrid({
         )}
 
         {!showStructure && (
-          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-2">
-            <div className="tw:relative">
-              <SearchIcon className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-2 tw:h-3.5 tw:w-3.5 tw:-translate-y-1/2 tw:text-[var(--dc-text-faint)]" />
+          <div className="dc-grid-toolbar">
+            <div className="dc-grid-search">
+              <SearchIcon className="dc-grid-search-icon" />
               <input
                 value={filter}
                 onChange={(e) => {
@@ -545,7 +545,7 @@ export function DataGrid({
                   setPage(1)
                 }}
                 placeholder={t('grid.filter')}
-                className="tw:h-7 tw:w-44 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:pr-2 tw:pl-7 tw:text-xs tw:text-[var(--dc-text)] tw:outline-none tw:placeholder:text-[var(--dc-text-faint)] tw:focus:border-[var(--dc-accent)]"
+                className="dc-grid-search-input"
               />
             </div>
 
@@ -554,7 +554,7 @@ export function DataGrid({
               <button
                 type="button"
                 onClick={() => openEditor('create', null)}
-                className="tw:flex tw:h-7 tw:items-center tw:gap-1 tw:rounded-md tw:bg-[var(--dc-accent)] tw:px-2.5 tw:text-xs tw:font-semibold tw:text-[var(--dc-accent-foreground)]"
+                className="dc-grid-newrow"
                 title={t('grid.newRow')}
               >
                 <span aria-hidden="true">+</span>
@@ -563,8 +563,8 @@ export function DataGrid({
             )}
 
             {/* View + CSV: one segmented icon cluster, verdict in the tooltip. */}
-            <div className="tw:flex tw:items-center tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)]">
-              <div ref={viewMenuRef} className="tw:relative">
+            <div className="dc-grid-segbar">
+              <div ref={viewMenuRef} className="dc-grid-menuwrap">
                 <GridIconButton
                   onClick={() => setViewMenuOpen((v) => !v)}
                   label={t('grid.viewOptions')}
@@ -578,24 +578,19 @@ export function DataGrid({
                   <div
                     role="menu"
                     aria-label={t('grid.viewOptions')}
-                    className="tw:absolute tw:top-full tw:left-0 tw:z-30 tw:mt-1 tw:w-52 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:py-1 tw:shadow-lg"
+                    className="dc-grid-menu"
                   >
                     <button
                       type="button"
                       role="menuitemcheckbox"
                       aria-checked={viewPrefs.types}
                       onClick={toggleColumnTypes}
-                      className="tw:flex tw:w-full tw:items-center tw:gap-2 tw:px-2.5 tw:py-1.5 tw:text-left tw:text-xs tw:text-[var(--dc-text)] tw:hover:bg-[var(--dc-hover)]"
+                      className="dc-grid-menu-item"
                     >
                       <span
-                        className={cx(
-                          'tw:flex tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:items-center tw:justify-center tw:rounded tw:border',
-                          viewPrefs.types
-                            ? 'tw:border-[var(--dc-accent)] tw:bg-[var(--dc-accent)] tw:text-[var(--dc-accent-foreground)]'
-                            : 'tw:border-[var(--dc-border)]',
-                        )}
+                        className={cx('dc-grid-check', viewPrefs.types && 'on')}
                       >
-                        {viewPrefs.types && <CheckIcon className="tw:h-2.5 tw:w-2.5" />}
+                        {viewPrefs.types && <CheckIcon className="dc-grid-check-icon" />}
                       </span>
                       {t('grid.columnTypes')}
                     </button>
@@ -620,19 +615,19 @@ export function DataGrid({
       ) : (
         <>
           {editableTable && pkColumns.length === 0 && (
-            <p className="tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-4 tw:py-1.5 tw:text-xs tw:text-[var(--dc-text-faint)]">
+            <p className="dc-grid-nopk">
               {t('grid.noPrimaryKey')}
             </p>
           )}
 
           {/* Grid + the cell drawer beside it: the table keeps its own horizontal
               scroll and shrinks, the drawer owns its width. */}
-          <div className="tw:flex tw:min-h-0 tw:flex-1">
-            <div className="tw:min-w-0 tw:flex-1 tw:overflow-auto">
-              <table className="tw:min-w-full tw:border-separate tw:border-spacing-0 tw:text-xs">
-                <thead className="tw:sticky tw:top-0 tw:z-10">
+          <div className="dc-grid-body">
+            <div className="dc-grid-scroll">
+              <table className="dc-grid-table">
+                <thead className="dc-grid-thead">
                   <tr>
-                    <th className="tw:sticky tw:left-0 tw:z-20 tw:w-10 tw:border-r tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-header)] tw:px-2 tw:py-1.5 tw:text-right tw:font-normal tw:text-[var(--dc-text-faint)]">
+                    <th className="dc-grid-num-head">
                       #
                     </th>
                     {table.columns.map((col) => {
@@ -643,33 +638,33 @@ export function DataGrid({
                           key={col.name}
                           style={width ? { width, minWidth: width, maxWidth: width } : undefined}
                           className={cx(
-                            'tw:relative tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-header)] tw:px-3 tw:py-1.5 tw:font-semibold tw:whitespace-nowrap tw:text-[var(--dc-text)]',
-                            isNumericType(col.type) ? 'tw:text-right' : 'tw:text-left',
-                            width && 'tw:overflow-hidden',
+                            'dc-grid-col-head',
+                            isNumericType(col.type) && 'num',
+                            width && 'clip',
                           )}
                         >
                           <button
                             type="button"
                             onClick={() => cycleSort(col.name)}
-                            className="tw:inline-flex tw:items-center tw:gap-1 tw:align-middle tw:hover:text-[var(--dc-accent)]"
+                            className="dc-grid-sort"
                           >
                             {col.pk && (
-                              <KeyIcon className="tw:h-3 tw:w-3 tw:text-[var(--dc-key)]" />
+                              <KeyIcon className="dc-grid-key-icon" />
                             )}
                             {col.fk && !col.pk && (
-                              <LinkIcon className="tw:h-3 tw:w-3 tw:text-[var(--dc-text-faint)]" />
+                              <LinkIcon className="dc-grid-faint-icon" />
                             )}
-                            <span className="tw:font-mono">{col.name}</span>
+                            <span className="dc-grid-mono">{col.name}</span>
                             <SortIcon
-                              className="tw:h-3 tw:w-3 tw:text-[var(--dc-text-faint)]"
+                              className="dc-grid-faint-icon"
                               dir={active ? sort.dir : null}
                             />
                           </button>
                           {viewPrefs.types && (
-                            <div className="tw:font-mono tw:text-[10px] tw:font-normal tw:lowercase tw:text-[var(--dc-text-faint)]">
+                            <div className="dc-grid-coltype">
                               {col.type}
                               {!col.nullable && (
-                                <span className="tw:text-[var(--dc-key)]"> ·nn</span>
+                                <span className="dc-grid-nn"> ·nn</span>
                               )}
                             </div>
                           )}
@@ -681,23 +676,23 @@ export function DataGrid({
                             aria-orientation="vertical"
                             aria-label={t('grid.resizeColumn')}
                             title={t('grid.resizeColumn')}
-                            className="tw:absolute tw:top-0 tw:right-0 tw:bottom-0 tw:z-10 tw:w-1.5 tw:cursor-col-resize tw:hover:bg-[var(--dc-accent)]"
+                            className="dc-grid-resize"
                           />
                         </th>
                       )
                     })}
                     {/* Spacer column absorbs leftover width so the grid spans the full pane. */}
-                    <th className="tw:w-full tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-header)]" />
+                    <th className="dc-grid-spacer-head" />
                   </tr>
                 </thead>
                 <tbody>
                   {pageRows.map((row, i) => {
                     const rowKey = `row:${start + i}`
                     return (
-                      <tr key={start + i} className="tw:group tw:hover:bg-[var(--dc-hover)]">
-                        <td className="tw:sticky tw:left-0 tw:z-10 tw:border-r tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2 tw:py-1 tw:text-right tw:text-[var(--dc-text-faint)] tw:group-hover:bg-[var(--dc-hover)]">
+                      <tr key={start + i} className="dc-grid-row">
+                        <td className="dc-grid-numcell">
                           {copied === rowKey ? (
-                            <CheckIcon className="tw:inline-block tw:h-3 tw:w-3 tw:text-[var(--dc-view-icon)]" />
+                            <CheckIcon className="dc-grid-numcheck" />
                           ) : (
                             start + i + 1
                           )}
@@ -721,7 +716,7 @@ export function DataGrid({
                             />
                           )
                         })}
-                        <td className="tw:border-b tw:border-[var(--dc-border)] tw:group-hover:bg-[var(--dc-hover)]" />
+                        <td className="dc-grid-endcell" />
                       </tr>
                     )
                   })}
@@ -729,7 +724,7 @@ export function DataGrid({
                     <tr>
                       <td
                         colSpan={table.columns.length + 2}
-                        className="tw:px-4 tw:py-10 tw:text-center tw:text-[var(--dc-text-muted)]"
+                        className="dc-grid-empty"
                       >
                         {t('grid.noMatchingRows')}
                       </td>
@@ -756,7 +751,7 @@ export function DataGrid({
               role="menu"
               aria-label={t('grid.cellMenu')}
               style={{ top: cellMenu.top, left: cellMenu.left }}
-              className="tw:fixed tw:z-50 tw:w-56 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:py-1 tw:shadow-lg"
+              className="dc-grid-cellmenu"
             >
               <MenuItem
                 icon={ColumnIcon}
@@ -779,7 +774,7 @@ export function DataGrid({
                 </MenuItem>
               )}
 
-              <hr className="tw:my-1 tw:border-0 tw:border-t tw:border-[var(--dc-border)]" />
+              <hr className="dc-grid-divider" />
               {/* All three copies together — same intent, different scope/format. */}
               <MenuItem
                 icon={CopyIcon}
@@ -811,7 +806,7 @@ export function DataGrid({
 
               {canEdit && (
                 <>
-                  <hr className="tw:my-1 tw:border-0 tw:border-t tw:border-[var(--dc-border)]" />
+                  <hr className="dc-grid-divider" />
                   <MenuItem
                     icon={WandIcon}
                     onClick={() => {
@@ -837,7 +832,7 @@ export function DataGrid({
           )}
 
           {/* Footer */}
-          <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-2 tw:border-t tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-4 tw:py-2 tw:text-xs tw:text-[var(--dc-text-muted)]">
+          <div className="dc-grid-foot">
             <span>
               {sorted.length === 0
                 ? t('grid.noRows')
@@ -847,7 +842,7 @@ export function DataGrid({
                     total: sorted.length,
                   })}
             </span>
-            <label className="tw:flex tw:items-center tw:gap-1.5">
+            <label className="dc-grid-perpage">
               <span>{t('grid.perPage')}</span>
               <select
                 value={perPage}
@@ -855,7 +850,7 @@ export function DataGrid({
                   setPerPage(Number(e.target.value))
                   setPage(1)
                 }}
-                className="tw:rounded tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-1 tw:py-0.5 tw:text-xs tw:text-[var(--dc-text)] tw:outline-none"
+                className="dc-grid-select"
               >
                 {PAGE_SIZES.map((n) => (
                   <option key={n} value={n}>
@@ -864,12 +859,12 @@ export function DataGrid({
                 ))}
               </select>
             </label>
-            <div className="tw:ml-auto tw:flex tw:items-center tw:gap-2">
+            <div className="dc-grid-toolbar">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={current <= 1}
-                className="tw:rounded tw:border tw:border-[var(--dc-border)] tw:px-2 tw:py-0.5 tw:hover:bg-[var(--dc-hover)] tw:disabled:opacity-40"
+                className="dc-grid-pagebtn"
               >
                 {t('grid.previous')}
               </button>
@@ -878,7 +873,7 @@ export function DataGrid({
                 type="button"
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                 disabled={current >= pageCount}
-                className="tw:rounded tw:border tw:border-[var(--dc-border)] tw:px-2 tw:py-0.5 tw:hover:bg-[var(--dc-hover)] tw:disabled:opacity-40"
+                className="dc-grid-pagebtn"
               >
                 {t('grid.next')}
               </button>
@@ -911,12 +906,9 @@ function MenuItem({ icon: Icon, onClick, accent, children }) {
       type="button"
       role="menuitem"
       onClick={onClick}
-      className={cx(
-        'tw:flex tw:w-full tw:items-center tw:gap-2 tw:px-2.5 tw:py-1.5 tw:text-left tw:text-xs tw:hover:bg-[var(--dc-hover)]',
-        accent ? 'tw:text-[var(--dc-accent)]' : 'tw:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-grid-menu-item', accent && 'accent')}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5 tw:shrink-0" />
+      <Icon className="dc-grid-menu-icon" />
       {children}
     </button>
   )
@@ -931,14 +923,9 @@ function SegmentButton({ active, onClick, icon: Icon, label }) {
       aria-pressed={active}
       title={label}
       aria-label={label}
-      className={cx(
-        'tw:flex tw:h-7 tw:w-8 tw:items-center tw:justify-center tw:border-l tw:border-[var(--dc-border)] tw:first:rounded-l-md tw:first:border-l-0 tw:last:rounded-r-md',
-        active
-          ? 'tw:bg-[var(--dc-accent)] tw:text-[var(--dc-accent-foreground)]'
-          : 'tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-grid-seg', active && 'on')}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-grid-icon" />
     </button>
   )
 }
@@ -951,16 +938,10 @@ function GridIconButton({ onClick, label, icon: Icon, active, divided, ...rest }
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={cx(
-        'tw:flex tw:h-7 tw:w-8 tw:items-center tw:justify-center tw:rounded-md',
-        divided && 'tw:rounded-l-none tw:border-l tw:border-[var(--dc-border)]',
-        active
-          ? 'tw:bg-[var(--dc-hover)] tw:text-[var(--dc-text)]'
-          : 'tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-grid-iconbtn', divided && 'divided', active && 'on')}
       {...rest}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-grid-icon" />
     </button>
   )
 }
@@ -973,13 +954,13 @@ function Cell({ column, value, width, copied, active, onOpen, onContextMenu, onJ
   const inner = () => {
     if (copied) {
       return (
-        <span className="tw:inline-flex tw:items-center tw:gap-1 tw:text-[var(--dc-view-icon)]">
-          <CheckIcon className="tw:h-3 tw:w-3" /> {t('grid.copied')}
+        <span className="dc-grid-copied">
+          <CheckIcon className="dc-grid-icon-sm" /> {t('grid.copied')}
         </span>
       )
     }
     if (kind === 'null') {
-      return <span className="tw:text-[var(--dc-null)] tw:italic">NULL</span>
+      return <span className="dc-grid-null">NULL</span>
     }
     if (column.fk && value !== null && value !== undefined) {
       const target = String(column.fk).split('.')[0]
@@ -990,18 +971,18 @@ function Cell({ column, value, width, copied, active, onOpen, onContextMenu, onJ
             e.stopPropagation()
             onJumpTo?.(target)
           }}
-          className="tw:inline-flex tw:items-center tw:gap-1 tw:font-mono tw:text-[var(--dc-accent)] tw:hover:underline"
+          className="dc-grid-fk"
           title={t('common.jumpTo', { target: column.fk })}
         >
-          <LinkIcon className="tw:h-3 tw:w-3" />
+          <LinkIcon className="dc-grid-icon-sm" />
           {text}
         </button>
       )
     }
     if (kind === 'json') {
-      return <span className="tw:font-mono tw:text-[var(--dc-table-icon)]">{text}</span>
+      return <span className="dc-grid-json">{text}</span>
     }
-    return <span className={cx(numeric && 'tw:font-mono')}>{text}</span>
+    return <span className={cx(numeric && 'dc-grid-mono')}>{text}</span>
   }
 
   return (
@@ -1011,10 +992,10 @@ function Cell({ column, value, width, copied, active, onOpen, onContextMenu, onJ
       title={kind === 'null' ? 'NULL' : text}
       style={width ? { width, minWidth: width, maxWidth: width } : undefined}
       className={cx(
-        'tw:truncate tw:border-b tw:border-[var(--dc-border)] tw:px-3 tw:py-1 tw:text-[var(--dc-text)]',
-        !width && 'tw:max-w-[22rem]',
-        numeric ? 'tw:text-right' : 'tw:text-left',
-        active && 'tw:bg-[var(--dc-accent-soft)]',
+        'dc-grid-cell',
+        !width && 'cap',
+        numeric && 'num',
+        active && 'on',
       )}
     >
       {inner()}
