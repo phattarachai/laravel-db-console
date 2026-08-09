@@ -85,24 +85,20 @@ export function Sidebar({
   const emptyMessage = favoritesOnly && !search.trim() ? t('sidebar.noFavorites') : null
 
   return (
-    <div className="tw:flex tw:h-full tw:flex-col tw:bg-[var(--dc-sidebar)]">
-      <div className="tw:flex tw:items-center tw:justify-between tw:px-3 tw:pt-3 tw:pb-2">
-        <span className="tw:text-[11px] tw:font-semibold tw:tracking-wider tw:text-[var(--dc-text-muted)] tw:uppercase">
-          {t('sidebar.heading')}
-        </span>
-        <span className="tw:rounded-full tw:bg-[var(--dc-active)] tw:px-1.5 tw:text-[11px] tw:text-[var(--dc-text-muted)]">
-          {total}
-        </span>
+    <div className="dc-side-root">
+      <div className="dc-side-head">
+        <span className="dc-side-heading">{t('sidebar.heading')}</span>
+        <span className="dc-pill round">{total}</span>
       </div>
 
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:px-3 tw:pb-2">
-        <div className="tw:relative tw:min-w-0 tw:flex-1">
-          <SearchIcon className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-2 tw:h-3.5 tw:w-3.5 tw:-translate-y-1/2 tw:text-[var(--dc-text-faint)]" />
+      <div className="dc-side-filter">
+        <div className="dc-side-search-wrap">
+          <SearchIcon className="dc-side-search-icon" />
           <input
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={t('sidebar.filter')}
-            className="tw:w-full tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:py-1.5 tw:pr-2 tw:pl-7 tw:text-xs tw:text-[var(--dc-text)] tw:outline-none tw:placeholder:text-[var(--dc-text-faint)] tw:focus:border-[var(--dc-accent)]"
+            className="dc-input dc-side-search"
           />
         </div>
 
@@ -113,23 +109,16 @@ export function Sidebar({
             aria-pressed={favoritesOnly}
             title={t(favoritesOnly ? 'sidebar.showAll' : 'sidebar.favoritesOnly')}
             aria-label={t(favoritesOnly ? 'sidebar.showAll' : 'sidebar.favoritesOnly')}
-            className={cx(
-              'tw:shrink-0 tw:rounded-md tw:border tw:p-1.5',
-              favoritesOnly
-                ? 'tw:border-[var(--dc-accent)] tw:bg-[var(--dc-accent-soft)] tw:text-[var(--dc-accent)]'
-                : 'tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:text-[var(--dc-text-faint)] tw:hover:text-[var(--dc-text)]',
-            )}
+            className={cx('dc-side-favfilter', favoritesOnly && 'on')}
           >
-            <StarIcon className="tw:h-3.5 tw:w-3.5" filled={favoritesOnly} />
+            <StarIcon className="dc-side-filterstar" filled={favoritesOnly} />
           </button>
         )}
       </div>
 
-      <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-4">
+      <div className="dc-side-tree">
         {filtered.length === 0 && (
-          <p className="tw:px-3 tw:py-6 tw:text-center tw:text-xs tw:text-[var(--dc-text-faint)]">
-            {emptyMessage ?? t('sidebar.noMatches', { search })}
-          </p>
+          <p className="dc-side-empty">{emptyMessage ?? t('sidebar.noMatches', { search })}</p>
         )}
 
         {filtered.map((schema) => {
@@ -139,21 +128,12 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => setOpenSchemas((s) => toggle(s, schema.name))}
-                className="tw:flex tw:w-full tw:items-center tw:gap-1.5 tw:px-2 tw:py-1 tw:text-left tw:hover:bg-[var(--dc-hover)]"
+                className="dc-side-schema"
               >
-                <ChevronIcon
-                  className={cx(
-                    'tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-text-faint)] tw:transition-transform',
-                    schemaOpen && 'tw:rotate-90',
-                  )}
-                />
-                <DatabaseIcon className="tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-text-muted)]" />
-                <span className="tw:truncate tw:text-xs tw:font-medium tw:text-[var(--dc-text)]">
-                  {schema.name}
-                </span>
-                <span className="tw:ml-auto tw:text-[11px] tw:text-[var(--dc-text-faint)]">
-                  {schema.tables.length}
-                </span>
+                <ChevronIcon className={cx('dc-side-schema-chevron', schemaOpen && 'on')} />
+                <DatabaseIcon className="dc-side-schema-icon" />
+                <span className="dc-side-schema-name">{schema.name}</span>
+                <span className="dc-side-schema-count">{schema.tables.length}</span>
               </button>
 
               {schemaOpen &&
@@ -166,55 +146,34 @@ export function Sidebar({
 
                   return (
                     <div key={table.name}>
-                      <div
-                        className={cx(
-                          'tw:group tw:flex tw:items-center tw:gap-1 tw:pr-1 tw:pl-3',
-                          isSelected
-                            ? 'tw:bg-[var(--dc-accent-soft)]'
-                            : 'tw:hover:bg-[var(--dc-hover)]',
-                        )}
-                      >
+                      <div className={cx('dc-side-table', isSelected && 'on')}>
                         <button
                           type="button"
                           onClick={() => toggleColumns(schema.name, table)}
-                          className="tw:shrink-0 tw:p-1 tw:text-[var(--dc-text-faint)]"
+                          className="dc-side-expand"
                           title={t('sidebar.showColumns')}
                         >
-                          <ChevronIcon
-                            className={cx(
-                              'tw:h-3 tw:w-3 tw:transition-transform',
-                              colsOpen && 'tw:rotate-90',
-                            )}
-                          />
+                          <ChevronIcon className={cx('dc-side-col-chevron', colsOpen && 'on')} />
                         </button>
                         <button
                           type="button"
                           onClick={() => onSelect(table)}
                           onDoubleClick={() => onInsert?.(table.name)}
                           title={onInsert ? t('sidebar.insertTableHint') : undefined}
-                          className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-1.5 tw:py-1 tw:text-left"
+                          className="dc-side-table-btn"
                         >
                           {table.type === 'view' ? (
-                            <ViewIcon className="tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-view-icon)]" />
+                            <ViewIcon className="dc-side-view-icon" />
                           ) : (
-                            <TableIcon className="tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-table-icon)]" />
+                            <TableIcon className="dc-side-table-icon" />
                           )}
-                          <span
-                            className={cx(
-                              'tw:truncate tw:text-xs',
-                              isSelected
-                                ? 'tw:font-medium tw:text-[var(--dc-text)]'
-                                : 'tw:text-[var(--dc-text)]',
-                            )}
-                          >
+                          <span className={cx('dc-side-table-name', isSelected && 'on')}>
                             {table.name}
                           </span>
                           {table.type === 'view' && (
-                            <span className="tw:shrink-0 tw:rounded tw:bg-[var(--dc-active)] tw:px-1 tw:text-[9px] tw:tracking-wide tw:text-[var(--dc-text-muted)] tw:uppercase">
-                              {t('sidebar.viewBadge')}
-                            </span>
+                            <span className="dc-side-view-badge">{t('sidebar.viewBadge')}</span>
                           )}
-                          <span className="tw:ml-auto tw:shrink-0 tw:text-[10px] tw:text-[var(--dc-text-faint)]">
+                          <span className="dc-side-table-count">
                             {compactCount(table.rowCount)}
                           </span>
                         </button>
@@ -226,22 +185,15 @@ export function Sidebar({
                             title={t(isStarred ? 'sidebar.unfavorite' : 'sidebar.favorite')}
                             aria-label={t(isStarred ? 'sidebar.unfavorite' : 'sidebar.favorite')}
                             aria-pressed={isStarred}
-                            className={cx(
-                              'tw:shrink-0 tw:p-1',
-                              isStarred
-                                ? 'tw:text-[var(--dc-accent)]'
-                                : 'tw:text-[var(--dc-text-faint)] tw:opacity-0 tw:group-hover:opacity-100 tw:hover:text-[var(--dc-text)] tw:focus:opacity-100',
-                            )}
+                            className={cx('dc-side-fav', isStarred && 'on')}
                           >
-                            <StarIcon className="tw:h-3 tw:w-3" filled={isStarred} />
+                            <StarIcon className="dc-side-rowstar" filled={isStarred} />
                           </button>
                         )}
                       </div>
 
                       {colsOpen && columns === null && (
-                        <p className="tw:py-1 tw:pl-9 tw:text-[11px] tw:text-[var(--dc-text-faint)]">
-                          {t('sidebar.loadingColumns')}
-                        </p>
+                        <p className="dc-side-loading">{t('sidebar.loadingColumns')}</p>
                       )}
 
                       {colsOpen &&
@@ -249,23 +201,16 @@ export function Sidebar({
                           <div
                             key={col.name}
                             onDoubleClick={() => onInsert?.(col.name)}
-                            className={cx(
-                              'tw:flex tw:items-center tw:gap-1.5 tw:py-0.5 tw:pr-2 tw:pl-9 tw:hover:bg-[var(--dc-hover)]',
-                              onInsert && 'tw:cursor-pointer tw:select-none',
-                            )}
+                            className={cx('dc-side-col', onInsert && 'ins')}
                             title={`${col.type}${col.nullable ? '' : ` · ${t('common.notNull')}`}${col.fk ? ` · → ${col.fk}` : ''}${onInsert ? ` · ${t('sidebar.insertColumnHint')}` : ''}`}
                           >
                             {col.pk ? (
-                              <KeyIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-key)]" />
+                              <KeyIcon className="dc-side-col-key" />
                             ) : (
-                              <ColumnIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-text-faint)]" />
+                              <ColumnIcon className="dc-side-col-icon" />
                             )}
-                            <span className="tw:truncate tw:text-[11px] tw:text-[var(--dc-text-muted)]">
-                              {col.name}
-                            </span>
-                            <span className="tw:ml-auto tw:shrink-0 tw:text-[10px] tw:text-[var(--dc-text-faint)] tw:lowercase">
-                              {col.type}
-                            </span>
+                            <span className="dc-side-col-name">{col.name}</span>
+                            <span className="dc-side-col-type">{col.type}</span>
                           </div>
                         ))}
                     </div>

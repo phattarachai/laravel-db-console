@@ -90,12 +90,12 @@ export function RowForm({
             }
           }}
         >
-          <div className="tw:flex tw:flex-col tw:gap-3 tw:px-4 tw:py-4">
-            <p className="tw:text-xs tw:text-[var(--dc-text-muted)]">{t('grid.confirmIntro')}</p>
-            <pre className="tw:max-h-56 tw:overflow-auto tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:whitespace-pre-wrap tw:text-[var(--dc-text)]">
+          <div className="dc-form-confirm">
+            <p className="dc-form-intro">{t('grid.confirmIntro')}</p>
+            <pre className="dc-form-statement">
               {confirm.statement}
             </pre>
-            <label className="tw:flex tw:flex-col tw:gap-1 tw:text-xs tw:text-[var(--dc-text-muted)]">
+            <label className="dc-form-confirm-label">
               <span>{t('grid.confirmPrompt', { word: confirmWord })}</span>
               <input
                 value={word}
@@ -103,7 +103,7 @@ export function RowForm({
                 autoFocus
                 spellCheck={false}
                 autoComplete="off"
-                className="tw:w-40 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2 tw:py-1.5 tw:font-mono tw:text-xs tw:text-[var(--dc-text)] tw:outline-none tw:focus:border-[var(--dc-accent)]"
+                className="dc-form-control narrow"
               />
             </label>
             {error && <ErrorLine>{error}</ErrorLine>}
@@ -117,24 +117,24 @@ export function RowForm({
         </form>
       ) : (
         <form onSubmit={submit}>
-          <div className="tw:max-h-[60vh] tw:overflow-auto tw:px-4 tw:py-4">
+          <div className="dc-form-body">
             {mode === 'delete' ? (
-              <div className="tw:flex tw:flex-col tw:gap-2">
-                <p className="tw:text-xs tw:text-[var(--dc-text)]">{t('grid.deletePrompt')}</p>
-                <div className="tw:flex tw:flex-wrap tw:gap-x-4 tw:gap-y-1 tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-3 tw:py-2">
+              <div className="dc-form-delete">
+                <p className="dc-form-delete-prompt">{t('grid.deletePrompt')}</p>
+                <div className="dc-form-keys">
                   {cols
                     .filter((col) => col.pk)
                     .map((col) => (
-                      <span key={col.name} className="tw:font-mono tw:text-xs">
-                        <span className="tw:text-[var(--dc-text-muted)]">{col.name}</span>
-                        <span className="tw:text-[var(--dc-text-faint)]"> = </span>
-                        <span className="tw:text-[var(--dc-text)]">{toText(row?.[col.name])}</span>
+                      <span key={col.name} className="dc-form-key">
+                        <span className="dc-form-key-name">{col.name}</span>
+                        <span className="dc-form-key-eq"> = </span>
+                        <span className="dc-form-key-val">{toText(row?.[col.name])}</span>
                       </span>
                     ))}
                 </div>
               </div>
             ) : (
-              <div className="tw:grid tw:gap-4 tw:sm:grid-cols-2">
+              <div className="dc-form-grid">
                 {cols.map((col) => (
                   <Field
                     key={col.name}
@@ -148,7 +148,7 @@ export function RowForm({
               </div>
             )}
             {(error ?? notice) && (
-              <div className="tw:pt-3">
+              <div className="dc-form-error-wrap">
                 <ErrorLine>{error ?? notice}</ErrorLine>
               </div>
             )}
@@ -185,10 +185,7 @@ function Field({ column, mode, field, masked, onChange }) {
     disabled,
     value: field.text,
     onChange: (event) => onChange({ text: event.target.value }),
-    className: cx(
-      'tw:w-full tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-2 tw:py-1.5 tw:font-mono tw:text-xs tw:text-[var(--dc-text)] tw:outline-none tw:focus:border-[var(--dc-accent)]',
-      disabled && 'tw:opacity-50',
-    ),
+    className: cx('dc-form-control', disabled && 'off'),
   }
 
   const control = () => {
@@ -217,26 +214,26 @@ function Field({ column, mode, field, masked, onChange }) {
   }
 
   return (
-    <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1">
-      <div className="tw:flex tw:items-center tw:gap-1.5">
-        {column.pk && <KeyIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-key)]" />}
+    <div className="dc-form-field">
+      <div className="dc-form-field-head">
+        {column.pk && <KeyIcon className="dc-form-key-icon" />}
         {masked && (
-          <LockIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-text-faint)]" />
+          <LockIcon className="dc-form-lock-icon" />
         )}
-        <label htmlFor={id} className="tw:font-mono tw:text-xs tw:text-[var(--dc-text)]">
+        <label htmlFor={id} className="dc-form-label">
           {column.name}
         </label>
-        <span className="tw:font-mono tw:text-[10px] tw:lowercase tw:text-[var(--dc-text-faint)]">
+        <span className="dc-form-type">
           {column.type}
         </span>
         {!column.nullable && (
-          <span className="tw:text-[10px] tw:text-[var(--dc-key)]">{t('common.notNull')}</span>
+          <span className="dc-form-notnull">{t('common.notNull')}</span>
         )}
       </div>
       {control()}
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-3 tw:gap-y-1 tw:text-[10px] tw:text-[var(--dc-text-faint)]">
+      <div className="dc-form-meta">
         {column.nullable && !locked && (
-          <label className="tw:flex tw:items-center tw:gap-1 tw:text-[var(--dc-text-muted)]">
+          <label className="dc-form-null-toggle">
             <input
               type="checkbox"
               checked={field.nulled}
@@ -257,15 +254,15 @@ function Field({ column, mode, field, masked, onChange }) {
 
 function Shell({ title, icon: Icon, children }) {
   return (
-    <div className="tw:fixed tw:inset-0 tw:z-50 tw:flex tw:items-start tw:justify-center tw:overflow-auto tw:bg-[rgba(0,0,0,0.55)] tw:p-6">
+    <div className="dc-form-overlay">
       <div
         role="dialog"
         aria-modal="true"
-        className="tw:w-full tw:max-w-3xl tw:overflow-hidden tw:rounded-lg tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:shadow-2xl"
+        className="dc-form-dialog"
       >
-        <div className="tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-header)] tw:px-4 tw:py-2.5">
-          {Icon && <Icon className="tw:h-4 tw:w-4 tw:text-[var(--dc-key)]" />}
-          <h3 className="tw:text-sm tw:font-semibold tw:text-[var(--dc-text)]">{title}</h3>
+        <div className="dc-form-header">
+          {Icon && <Icon className="dc-form-header-icon" />}
+          <h3 className="dc-form-title">{title}</h3>
         </div>
         {children}
       </div>
@@ -275,7 +272,7 @@ function Shell({ title, icon: Icon, children }) {
 
 function Footer({ children }) {
   return (
-    <div className="tw:flex tw:items-center tw:justify-end tw:gap-2 tw:border-t tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)] tw:px-4 tw:py-2.5">
+    <div className="dc-form-footer">
       {children}
     </div>
   )
@@ -286,7 +283,7 @@ function GhostButton({ onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className="tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-3 tw:py-1.5 tw:text-xs tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]"
+      className="dc-btn"
     >
       {children}
     </button>
@@ -298,12 +295,7 @@ function PrimaryButton({ disabled, danger, children }) {
     <button
       type="submit"
       disabled={disabled}
-      className={cx(
-        'tw:rounded-md tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold tw:disabled:opacity-40',
-        danger
-          ? 'tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:text-[var(--dc-key)] tw:hover:bg-[var(--dc-hover)]'
-          : 'tw:bg-[var(--dc-accent)] tw:text-[var(--dc-accent-foreground)]',
-      )}
+      className={cx('dc-btn', danger ? 'dc-form-danger' : 'primary')}
     >
       {children}
     </button>
@@ -312,8 +304,8 @@ function PrimaryButton({ disabled, danger, children }) {
 
 function ErrorLine({ children }) {
   return (
-    <p className="tw:flex tw:items-start tw:gap-1.5 tw:text-xs tw:text-[var(--dc-key)]">
-      <AlertIcon className="tw:mt-px tw:h-3.5 tw:w-3.5 tw:shrink-0" />
+    <p className="dc-form-error">
+      <AlertIcon className="dc-form-error-icon" />
       <span>{children}</span>
     </p>
   )

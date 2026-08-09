@@ -15,52 +15,52 @@ export function TableStructure({ table, onJumpTo }) {
   const foreignKeys = table.foreignKeys ?? []
 
   return (
-    <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-4 tw:py-4">
-      <div className="tw:mx-auto tw:flex tw:max-w-4xl tw:flex-col tw:gap-6">
+    <div className="dc-struct-root">
+      <div className="dc-struct-body">
         <Section title={t('structure.columns')} count={table.columns.length}>
-          <table className="tw:w-full tw:border-separate tw:border-spacing-0 tw:text-xs">
+          <table className="dc-struct-table">
             <thead>
-              <tr className="tw:text-left tw:text-[var(--dc-text-muted)]">
-                <Th className="tw:w-8 tw:text-right">#</Th>
+              <tr className="dc-struct-head">
+                <Th className="num">#</Th>
                 <Th>{t('structure.columnName')}</Th>
                 <Th>{t('structure.columnType')}</Th>
-                <Th className="tw:text-center">{t('structure.columnNull')}</Th>
+                <Th className="center">{t('structure.columnNull')}</Th>
                 <Th>{t('structure.columnDefault')}</Th>
                 <Th>{t('structure.columnKey')}</Th>
               </tr>
             </thead>
             <tbody>
               {table.columns.map((col, i) => (
-                <tr key={col.name} className="tw:group tw:hover:bg-[var(--dc-hover)]">
-                  <Td className="tw:text-right tw:text-[var(--dc-text-faint)]">{i + 1}</Td>
+                <tr key={col.name} className="dc-struct-row">
+                  <Td className="idx">{i + 1}</Td>
                   <Td>
-                    <span className="tw:inline-flex tw:items-center tw:gap-1.5">
+                    <span className="dc-struct-name">
                       {col.pk ? (
-                        <KeyIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-key)]" />
+                        <KeyIcon className="dc-struct-icon key" />
                       ) : col.fk ? (
-                        <LinkIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-text-faint)]" />
+                        <LinkIcon className="dc-struct-icon faint" />
                       ) : (
-                        <ColumnIcon className="tw:h-3 tw:w-3 tw:shrink-0 tw:text-[var(--dc-text-faint)]" />
+                        <ColumnIcon className="dc-struct-icon faint" />
                       )}
-                      <span className="tw:font-mono tw:text-[var(--dc-text)]">{col.name}</span>
+                      <span className="dc-struct-colname">{col.name}</span>
                     </span>
                   </Td>
-                  <Td className="tw:font-mono tw:text-[var(--dc-text-muted)] tw:lowercase">
+                  <Td className="type">
                     {col.type}
                   </Td>
-                  <Td className="tw:text-center">
+                  <Td className="center">
                     {col.nullable ? (
-                      <span className="tw:text-[var(--dc-text-faint)]">
+                      <span className="dc-struct-faint">
                         {t('structure.nullableYes')}
                       </span>
                     ) : (
-                      <span className="tw:font-medium tw:text-[var(--dc-key)]">
+                      <span className="dc-struct-null-no">
                         {t('structure.nullableNo')}
                       </span>
                     )}
                   </Td>
-                  <Td className="tw:font-mono tw:text-[var(--dc-text-muted)]">
-                    {col.default ?? <span className="tw:text-[var(--dc-text-faint)]">–</span>}
+                  <Td className="mono">
+                    {col.default ?? <span className="dc-struct-faint">–</span>}
                   </Td>
                   <Td>
                     {col.pk && <Badge tone="key">PK</Badge>}
@@ -68,10 +68,10 @@ export function TableStructure({ table, onJumpTo }) {
                       <button
                         type="button"
                         onClick={() => onJumpTo?.(String(col.fk).split('.')[0])}
-                        className="tw:inline-flex tw:items-center tw:gap-1 tw:font-mono tw:text-[var(--dc-accent)] tw:hover:underline"
+                        className="dc-struct-jump"
                         title={t('common.jumpTo', { target: col.fk })}
                       >
-                        <LinkIcon className="tw:h-3 tw:w-3" />
+                        <LinkIcon className="dc-struct-icon" />
                         {col.fk}
                       </button>
                     )}
@@ -86,21 +86,18 @@ export function TableStructure({ table, onJumpTo }) {
           {indexes.length === 0 ? (
             <Empty>{t('structure.noIndexes')}</Empty>
           ) : (
-            <ul className="tw:flex tw:flex-col tw:gap-1">
+            <ul className="dc-struct-list">
               {indexes.map((ix) => (
-                <li
-                  key={ix.name}
-                  className="tw:flex tw:items-center tw:gap-2 tw:rounded tw:px-2 tw:py-1 tw:hover:bg-[var(--dc-hover)]"
-                >
+                <li key={ix.name} className="dc-struct-item">
                   <Badge
                     tone={ix.type === 'PRIMARY' ? 'key' : ix.type === 'UNIQUE' ? 'accent' : 'muted'}
                   >
                     {ix.type}
                   </Badge>
-                  <span className="tw:font-mono tw:text-xs tw:text-[var(--dc-text)]">
+                  <span className="dc-struct-code">
                     {ix.name}
                   </span>
-                  <span className="tw:font-mono tw:text-xs tw:text-[var(--dc-text-muted)]">
+                  <span className="dc-struct-code dim">
                     ({ix.columns.join(', ')})
                   </span>
                 </li>
@@ -113,30 +110,27 @@ export function TableStructure({ table, onJumpTo }) {
           {foreignKeys.length === 0 ? (
             <Empty>{t('structure.noForeignKeys')}</Empty>
           ) : (
-            <ul className="tw:flex tw:flex-col tw:gap-1">
+            <ul className="dc-struct-list">
               {foreignKeys.map((fk) => (
-                <li
-                  key={fk.name}
-                  className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-2 tw:gap-y-1 tw:rounded tw:px-2 tw:py-1 tw:hover:bg-[var(--dc-hover)]"
-                >
-                  <span className="tw:font-mono tw:text-xs tw:text-[var(--dc-text-muted)]">
+                <li key={fk.name} className="dc-struct-item wrap">
+                  <span className="dc-struct-code dim">
                     {fk.name}
                   </span>
-                  <span className="tw:font-mono tw:text-xs tw:text-[var(--dc-text)]">
+                  <span className="dc-struct-code">
                     ({fk.columns.join(', ')})
                   </span>
-                  <span className="tw:text-[var(--dc-text-faint)]">→</span>
+                  <span className="dc-struct-faint">→</span>
                   <button
                     type="button"
                     onClick={() => onJumpTo?.(String(fk.references).split('.')[0])}
-                    className="tw:inline-flex tw:items-center tw:gap-1 tw:font-mono tw:text-xs tw:text-[var(--dc-accent)] tw:hover:underline"
+                    className="dc-struct-jump"
                     title={t('common.jumpTo', { target: fk.references })}
                   >
-                    <LinkIcon className="tw:h-3 tw:w-3" />
+                    <LinkIcon className="dc-struct-icon" />
                     {fk.references}
                   </button>
                   {(fk.onDelete !== 'NO ACTION' || fk.onUpdate !== 'NO ACTION') && (
-                    <span className="tw:text-[10px] tw:text-[var(--dc-text-faint)] tw:uppercase">
+                    <span className="dc-struct-action">
                       {fk.onDelete !== 'NO ACTION' &&
                         t('structure.onDelete', { action: fk.onDelete })}
                       {fk.onDelete !== 'NO ACTION' && fk.onUpdate !== 'NO ACTION' && ' · '}
@@ -156,28 +150,23 @@ export function TableStructure({ table, onJumpTo }) {
 
 function Section({ title, count, children }) {
   return (
-    <section className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)]">
-      <div className="tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-header)] tw:px-3 tw:py-2">
-        <h3 className="tw:text-xs tw:font-semibold tw:tracking-wide tw:text-[var(--dc-text)] tw:uppercase">
+    <section className="dc-struct-section">
+      <div className="dc-struct-section-head">
+        <h3 className="dc-struct-section-title">
           {title}
         </h3>
-        <span className="tw:rounded-full tw:bg-[var(--dc-active)] tw:px-1.5 tw:text-[11px] tw:text-[var(--dc-text-muted)]">
+        <span className="dc-struct-count">
           {count}
         </span>
       </div>
-      <div className="tw:px-3 tw:py-2">{children}</div>
+      <div className="dc-struct-section-body">{children}</div>
     </section>
   )
 }
 
 function Th({ className, children }) {
   return (
-    <th
-      className={cx(
-        'tw:border-b tw:border-[var(--dc-border)] tw:px-2 tw:py-1.5 tw:font-medium',
-        className,
-      )}
-    >
+    <th className={cx('dc-struct-th', className)}>
       {children}
     </th>
   )
@@ -185,34 +174,24 @@ function Th({ className, children }) {
 
 function Td({ className, children }) {
   return (
-    <td
-      className={cx(
-        'tw:border-b tw:border-[var(--dc-border)] tw:px-2 tw:py-1.5 tw:align-top',
-        className,
-      )}
-    >
+    <td className={cx('dc-struct-td', className)}>
       {children}
     </td>
   )
 }
 
 function Empty({ children }) {
-  return <p className="tw:px-2 tw:py-1 tw:text-xs tw:text-[var(--dc-text-faint)]">{children}</p>
+  return <p className="dc-struct-empty">{children}</p>
 }
 
 function Badge({ tone, children }) {
   const tones = {
-    key: 'tw:text-[var(--dc-key)]',
-    accent: 'tw:text-[var(--dc-accent)]',
-    muted: 'tw:text-[var(--dc-text-muted)]',
+    key: 'key',
+    accent: 'accent',
+    muted: 'muted',
   }
   return (
-    <span
-      className={cx(
-        'tw:inline-block tw:rounded tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:px-1.5 tw:py-0.5 tw:text-[10px] tw:font-semibold tw:tracking-wide',
-        tones[tone] ?? tones.muted,
-      )}
-    >
+    <span className={cx('dc-struct-badge', tones[tone] ?? tones.muted)}>
       {children}
     </span>
   )

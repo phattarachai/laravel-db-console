@@ -15,10 +15,10 @@ const JSON_TOKENS =
   /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b/g
 
 const TOKEN_CLASS = {
-  key: 'tw:text-[var(--dc-syntax-keyword)]',
-  string: 'tw:text-[var(--dc-syntax-string)]',
-  number: 'tw:text-[var(--dc-syntax-number)]',
-  literal: 'tw:text-[var(--dc-null)]',
+  key: 'dc-drawer-tok-key',
+  string: 'dc-drawer-tok-string',
+  number: 'dc-drawer-tok-number',
+  literal: 'dc-drawer-tok-literal',
 }
 
 /** How long the “copied” confirmation stays up, in ms. */
@@ -118,7 +118,7 @@ export function CellDrawer({ column, value, onClose }) {
   }
 
   return (
-    <div className="tw:relative tw:flex tw:shrink-0 tw:flex-col" style={{ width }}>
+    <div className="dc-drawer-root" style={{ width }}>
       {/* Grab handle: 5px of hit area straddling the panel's left border. */}
       <div
         onPointerDown={startResize}
@@ -127,23 +127,23 @@ export function CellDrawer({ column, value, onClose }) {
         aria-orientation="vertical"
         aria-label={t('drawer.resize')}
         title={t('drawer.resize')}
-        className="tw:absolute tw:top-0 tw:bottom-0 tw:-left-0.5 tw:z-20 tw:w-1.5 tw:cursor-col-resize tw:hover:bg-[var(--dc-accent)]"
+        className="dc-drawer-handle"
       />
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-y-auto tw:border-l tw:border-[var(--dc-border)] tw:bg-[var(--dc-surface)]">
-        <div className="tw:sticky tw:top-0 tw:z-10 tw:flex tw:shrink-0 tw:flex-col tw:gap-2 tw:border-b tw:border-[var(--dc-border)] tw:bg-[var(--dc-header)] tw:px-3 tw:py-2">
-          <div className="tw:flex tw:items-start tw:gap-2">
-            <ColumnIcon className="tw:mt-0.5 tw:h-3.5 tw:w-3.5 tw:shrink-0 tw:text-[var(--dc-text-faint)]" />
-            <div className="tw:min-w-0 tw:flex-1">
-              <p className="tw:truncate tw:font-mono tw:text-xs tw:font-semibold tw:text-[var(--dc-text)]">
+      <div className="dc-drawer-panel">
+        <div className="dc-drawer-header">
+          <div className="dc-drawer-title-row">
+            <ColumnIcon className="dc-drawer-title-icon" />
+            <div className="dc-cell">
+              <p className="dc-drawer-name">
                 {column?.name}
               </p>
               {column?.type && (
-                <p className="tw:truncate tw:font-mono tw:text-[11px] tw:text-[var(--dc-text-faint)] tw:lowercase">
+                <p className="dc-drawer-type">
                   {column.type}
                 </p>
               )}
             </div>
-            <div className="tw:ml-auto tw:flex tw:shrink-0 tw:items-center tw:gap-0.5">
+            <div className="dc-drawer-actions">
               <HeaderButton
                 onClick={copy}
                 label={copied ? t('drawer.copied') : t('drawer.copy')}
@@ -155,7 +155,7 @@ export function CellDrawer({ column, value, onClose }) {
           </div>
 
           {isJson && (
-            <div className="tw:flex tw:items-center tw:gap-0.5 tw:self-start tw:rounded-md tw:border tw:border-[var(--dc-border)] tw:bg-[var(--dc-bg)] tw:p-0.5">
+            <div className="dc-drawer-modes">
               <ModeButton active={mode === 'pretty'} onClick={() => setMode('pretty')}>
                 {t('drawer.pretty')}
               </ModeButton>
@@ -166,29 +166,29 @@ export function CellDrawer({ column, value, onClose }) {
           )}
 
           {copied && (
-            <p className="tw:text-[11px] tw:text-[var(--dc-accent)]">{t('drawer.copied')}</p>
+            <p className="dc-drawer-copied">{t('drawer.copied')}</p>
           )}
         </div>
 
-        <div className="tw:flex-1 tw:px-3 tw:py-3">
+        <div className="dc-drawer-body">
           {isNull ? (
-            <span className="tw:font-mono tw:text-xs tw:italic tw:text-[var(--dc-null)]">
+            <span className="dc-drawer-null">
               {t('drawer.null')}
             </span>
           ) : raw === '' ? (
-            <span className="tw:text-xs tw:italic tw:text-[var(--dc-text-faint)]">
+            <span className="dc-drawer-empty">
               {t('drawer.empty')}
             </span>
           ) : showPretty ? (
-            <pre className="tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-[var(--dc-text)] tw:select-text">
+            <pre className="dc-drawer-content">
               {highlighted ?? pretty}
             </pre>
           ) : isJson ? (
-            <pre className="tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-[var(--dc-text)] tw:select-text">
+            <pre className="dc-drawer-content">
               {raw}
             </pre>
           ) : (
-            <div className="tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-[var(--dc-text)] tw:select-text">
+            <div className="dc-drawer-content">
               {raw}
             </div>
           )}
@@ -287,14 +287,9 @@ function HeaderButton({ onClick, label, icon: Icon, active }) {
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={cx(
-        'tw:flex tw:h-6 tw:w-6 tw:items-center tw:justify-center tw:rounded tw:hover:bg-[var(--dc-hover)]',
-        active
-          ? 'tw:text-[var(--dc-accent)]'
-          : 'tw:text-[var(--dc-text-muted)] tw:hover:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-drawer-hbtn', active && 'on')}
     >
-      <Icon className="tw:h-3.5 tw:w-3.5" />
+      <Icon className="dc-drawer-hbtn-icon" />
     </button>
   )
 }
@@ -306,12 +301,7 @@ function ModeButton({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cx(
-        'tw:rounded tw:px-2 tw:py-0.5 tw:text-[11px] tw:font-medium',
-        active
-          ? 'tw:bg-[var(--dc-accent)] tw:text-[var(--dc-accent-foreground)]'
-          : 'tw:text-[var(--dc-text-muted)] tw:hover:bg-[var(--dc-hover)] tw:hover:text-[var(--dc-text)]',
-      )}
+      className={cx('dc-drawer-mode', active && 'on')}
     >
       {children}
     </button>
