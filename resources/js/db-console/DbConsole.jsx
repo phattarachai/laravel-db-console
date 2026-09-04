@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConnectionPicker } from './ConnectionPicker'
 import { DataGrid } from './DataGrid'
@@ -16,8 +16,10 @@ import {
   cx,
   readConsoleMode,
   readScheme,
+  readUrlState,
   SCHEMES,
   sendJson,
+  updateUrlState,
   writeConsoleMode,
   writeScheme,
 } from './lib'
@@ -109,9 +111,7 @@ function BrandMark({ brand, label, homeHint }) {
           <TableIcon className="dc-top-brand-badge-icon" />
         </span>
       )}
-      <span className="dc-top-brand-name">
-        {brand?.name || label}
-      </span>
+      <span className="dc-top-brand-name">{brand?.name || label}</span>
     </>
   )
 
@@ -120,11 +120,7 @@ function BrandMark({ brand, label, homeHint }) {
   }
 
   return (
-    <a
-      href={brand.url}
-      title={homeHint}
-      className="dc-top-brand link"
-    >
+    <a href={brand.url} title={homeHint} className="dc-top-brand link">
       {inner}
     </a>
   )
@@ -155,7 +151,12 @@ function Console({
     [schemaList],
   )
 
-  const [selected, setSelected] = useState(() => entries[0]?.table ?? null)
+  // Initial table honours `?table=` so a refresh or shared link reopens it.
+  const [selected, setSelected] = useState(() => {
+    const wanted = readUrlState().table
+    const hit = wanted ? entries.find((entry) => entry.table.name === wanted) : null
+    return hit?.table ?? entries[0]?.table ?? null
+  })
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [search, setSearch] = useState('')
   const [shareNoticeOpen, setShareNoticeOpen] = useState(true)
@@ -235,10 +236,16 @@ function Console({
     writeConsoleMode(next)
   }
 
+  // Selecting a table reflects it onto the URL so a refresh returns to it.
+  const selectTable = useCallback((table) => {
+    setSelected(table)
+    updateUrlState({ table: table?.name ?? null })
+  }, [])
+
   const jumpTo = (name) => {
     const target = entries.find((entry) => entry.table.name === name)?.table
     if (target) {
-      setSelected(target)
+      selectTable(target)
       changeMode('explorer')
     }
   }
@@ -329,12 +336,8 @@ function Console({
         <div className="dc-shell-fatal">
           <div className="dc-shell-msg">
             <AlertIcon className="dc-shell-fatal-icon" />
-            <p className="dc-shell-fatal-title">
-              {fatalMessage}
-            </p>
-            <p className="dc-shell-fatal-hint">
-              {t('errors.fatalHint')}
-            </p>
+            <p className="dc-shell-fatal-title">{fatalMessage}</p>
+            <p className="dc-shell-fatal-hint">{t('errors.fatalHint')}</p>
           </div>
         </div>
       ) : (
@@ -344,7 +347,7 @@ function Console({
               <Sidebar
                 schemas={schemaList}
                 selected={selected}
-                onSelect={setSelected}
+                onSelect={selectTable}
                 search={search}
                 onSearch={setSearch}
                 onInsert={mode === 'sql' && sql ? insertIdentifier : undefined}
@@ -375,6 +378,12 @@ function Console({
                 table={selectedDetail}
                 onJumpTo={jumpTo}
                 structural
+                source={{
+                  endpoint: endpoints?.rows,
+                  csrfToken,
+                  connectionKey: connection?.key,
+                  schema: currentSchemaName,
+                }}
                 rowEditing={{
                   enabled: Boolean(features?.rowEdit),
                   endpoint: endpoints?.row,
@@ -387,9 +396,7 @@ function Console({
             ) : selected ? (
               <TableLoading name={selected.name} error={selectedError} />
             ) : (
-              <div className="dc-shell-empty">
-                {t('explorer.selectTable')}
-              </div>
+              <div className="dc-shell-empty">{t('explorer.selectTable')}</div>
             )}
           </main>
         </div>
@@ -446,13 +453,7 @@ function SchemeToggle({ scheme, onCycle }) {
   const hint = t(SCHEME_HINTS[scheme] ?? SCHEME_HINTS.auto)
 
   return (
-    <button
-      type="button"
-      onClick={onCycle}
-      title={hint}
-      aria-label={hint}
-      className="dc-top-icon"
-    >
+    <button type="button" onClick={onCycle} title={hint} aria-label={hint} className="dc-top-icon">
       <Icon className="dc-top-icon-glyph" />
     </button>
   )
@@ -460,11 +461,7 @@ function SchemeToggle({ scheme, onCycle }) {
 
 function ModeButton({ active, onClick, icon: Icon, children }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cx('dc-top-mode', active && 'on')}
-    >
+    <button type="button" onClick={onClick} className={cx('dc-top-mode', active && 'on')}>
       <Icon className="dc-top-mode-icon" />
       {children}
     </button>

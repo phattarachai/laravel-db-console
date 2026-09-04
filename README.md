@@ -106,10 +106,19 @@ Kill it entirely with `DB_CONSOLE_ENABLED=false`: no routes are registered at al
 ## What it does
 
 **Explorer** — schema tree with a filter, per-table **Structure** (columns with types, nullability, defaults, indexes,
-foreign keys) and **Data** tabs, sortable and filterable grid, foreign-key jump-to-referenced-row, CSV export of the
-current view. **Star a table** to add it to your favourites, and the star beside the filter box narrows the tree to
-those alone — the working set of a 150-table database is usually a dozen. Columns are **drag-resizable from their right edge** (double-click a handle to reset), and the widths are
-remembered per table in the browser. A **View** menu toggles the column-type line on and off.
+foreign keys) and **Data** tabs, a server-driven grid with sorting and pagination, foreign-key
+jump-to-referenced-row, CSV export of the current view. **Star a table** to add it to your favourites, and the star
+beside the filter box narrows the tree to those alone — the working set of a 150-table database is usually a dozen.
+Columns are **drag-resizable from their right edge** (double-click a handle to reset), and the widths are remembered
+per table in the browser. A **View** menu toggles the column-type line on and off.
+
+**Per-field filters** — build conditions column by column, Adminer-style, without writing SQL. Pick a column and the
+operators offered match its type — `= ≠ < ≤ > ≥ between in` for numbers, `contains / starts with / ends with` for text,
+`is true / is false` for booleans, a date picker for timestamps — and `is null / is not null` throughout. Conditions are
+ANDed and run **against the whole table on the server** (not the loaded sample), each compiled through the query builder
+with bindings; masked columns are never offered. A quick-search box still scans every text column at once. **The whole
+view — selected table, filters, sort, page and search — lives in the URL**, so a refresh or a shared link reopens
+exactly what you were looking at.
 
 **The value panel** — double-click any cell to open a side panel with the full value, pretty-printed and
 syntax-highlighted for `json` / `jsonb`, with a Raw toggle. The panel is resizable and remembers its width.
@@ -129,8 +138,10 @@ typed confirmation**, whatever `confirm_writes` says, because it is one irrevers
 mode badge. A read-only connection sits next to a writable one without either being able to affect the other.
 
 **Constant-cost page load** — opening the console reads object names, kinds and row counts, and nothing else: four
-queries and a few KB, whether the schema has ten tables or a thousand. A table's columns, indexes, foreign keys and
-row sample are fetched when you select or expand it, and cached for the life of the page.
+queries and a few KB, whether the schema has ten tables or a thousand. A table's columns, indexes and foreign keys are
+fetched when you select or expand it and cached for the life of the page; the grid's rows are paged from the server as
+you filter, sort and page, fetching one page at a time (`perPage + 1`, so "next page?" costs nothing extra) rather than
+counting or loading the whole table.
 
 ## Safety model
 

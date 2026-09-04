@@ -21,6 +21,8 @@ return [
     'pk_mismatch' => 'primary key ที่ส่งมาไม่ตรงกับตารางนี้',
     'unknown_column' => 'ไม่พบคอลัมน์ :column',
     'masked_column' => 'คอลัมน์ :column ถูกปิดค่าไว้ เขียนทับไม่ได้',
+    'unknown_operator' => ':operator ไม่ใช่เงื่อนไขที่ใช้กรองได้',
+    'invalid_filter_value' => 'ค่าที่ใช้กรองไม่ถูกต้อง',
     'affected_not_one' => 'ต้องกระทบ 1 แถวเท่านั้น แต่ตรงกับ :count แถว จึงยกเลิกการเปลี่ยนแปลง',
 
     'share_disabled' => 'ปิดการแชร์ลิงก์ไว้',

@@ -15,6 +15,7 @@ use Phattarachai\DbConsole\Support\ConfirmToken;
 use Phattarachai\DbConsole\Support\Connection;
 use Phattarachai\DbConsole\Support\FavoriteStore;
 use Phattarachai\DbConsole\Support\QueryStore;
+use Phattarachai\DbConsole\Support\RowReader;
 use Phattarachai\DbConsole\Support\RowWriter;
 use Phattarachai\DbConsole\Support\SchemaInspector;
 use Phattarachai\DbConsole\Support\SqlRunner;
@@ -69,6 +70,46 @@ final class DbConsoleController extends Controller
             $schema = (string) ($validated['schema'] ?? $connection->schemas[0] ?? 'public');
 
             return response()->json(new SchemaInspector($connection)->details($schema, $validated['table']));
+        } catch (SqlGuardException|UnsupportedDriverException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
+    /**
+     * A filtered, sorted, paginated slice of one table — the grid's data feed
+     * once the viewer moves past the first sample or narrows it. Filters arrive
+     * as structured conditions and are compiled server-side; see {@see RowReader}.
+     */
+    public function rows(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'schema' => ['nullable', 'string'],
+            'table' => ['required', 'string'],
+            'filters' => ['nullable', 'array'],
+            'filters.*.column' => ['required', 'string'],
+            'filters.*.operator' => ['required', 'string'],
+            'search' => ['nullable', 'string'],
+            'sort' => ['nullable', 'array'],
+            'sort.column' => ['required_with:sort', 'string'],
+            'sort.dir' => ['nullable', 'in:asc,desc'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        try {
+            $connection = $this->connection($request);
+            $schema = (string) ($validated['schema'] ?? $connection->schemas[0] ?? 'public');
+            $reader = new RowReader($connection, new SchemaInspector($connection));
+
+            return response()->json($reader->page(
+                $schema,
+                $validated['table'],
+                (array) $request->input('filters', []),
+                $request->input('search'),
+                $request->input('sort'),
+                (int) ($validated['page'] ?? 1),
+                (int) ($validated['perPage'] ?? $connection->sampleRows),
+            ));
         } catch (SqlGuardException|UnsupportedDriverException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -240,6 +281,7 @@ final class DbConsoleController extends Controller
                 'saved' => route('db-console.saved.store'),
                 'index' => route('db-console.index'),
                 'table' => route('db-console.table'),
+                'rows' => route('db-console.rows'),
                 'favorite' => route('db-console.favorite'),
             ],
             'brand' => config('db-console.brand'),

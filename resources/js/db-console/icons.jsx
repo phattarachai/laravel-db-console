@@ -235,3 +235,19 @@ export function MonitorIcon({ className }) {
     </svg>
   )
 }
+
+export function PlusIcon({ className }) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+export function CloseIcon({ className }) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  )
+}

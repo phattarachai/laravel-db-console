@@ -302,6 +302,34 @@ export async function sendJson(url, method, csrfToken, body) {
   return { ok: response.ok, status: response.status, data }
 }
 
+/** Every current query param as a plain object (empty when there is no window). */
+export function readUrlState() {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+  return Object.fromEntries(new URLSearchParams(window.location.search))
+}
+
+/**
+ * Merge `params` into the URL query string without navigating (History API). A
+ * null/undefined/empty value removes its key, so a default state leaves the URL
+ * clean; every other key already on the URL is preserved.
+ */
+export function updateUrlState(params) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const url = new URL(window.location.href)
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined || value === '') {
+      url.searchParams.delete(key)
+    } else {
+      url.searchParams.set(key, String(value))
+    }
+  }
+  window.history.replaceState(window.history.state, '', url)
+}
+
 /** Append query params to an endpoint URL, skipping null/undefined values. */
 export function withQuery(url, params) {
   const search = new URLSearchParams(

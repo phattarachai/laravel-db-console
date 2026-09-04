@@ -9,6 +9,7 @@ Route::get('/', [DbConsoleController::class, 'index'])->name('index');
 Route::get('/s/{token}', [DbConsoleController::class, 'shared'])->name('shared');
 
 Route::get('/table', [DbConsoleController::class, 'table'])->name('table');
+Route::post('/rows', [DbConsoleController::class, 'rows'])->name('rows');
 
 Route::post('/favorite', [DbConsoleController::class, 'favorite'])->name('favorite');
 

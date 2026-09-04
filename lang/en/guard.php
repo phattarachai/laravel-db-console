@@ -21,6 +21,8 @@ return [
     'pk_mismatch' => 'The primary key given does not match this table.',
     'unknown_column' => 'Unknown column :column.',
     'masked_column' => 'The column :column is masked, so it cannot be written.',
+    'unknown_operator' => ':operator is not a valid filter operator.',
+    'invalid_filter_value' => 'That filter value is not valid.',
     'affected_not_one' => 'Expected exactly 1 row to change, but :count matched — rolled back.',
 
     'share_disabled' => 'Sharing is disabled.',

@@ -21,13 +21,64 @@ import {
   cx,
   downloadText,
   isNumericType,
+  readUrlState,
+  sendJson,
   toCsv,
+  updateUrlState,
 } from './lib'
+import { FilterAddButton, FilterConditions } from './FilterBar'
+import { toPayload } from './filter-lib'
 import { RowForm } from './RowForm'
 import { useStrings } from './strings'
 import { TableStructure } from './TableStructure'
 
 const PAGE_SIZES = [25, 50, 100, 200]
+
+const DEFAULT_PER_PAGE = 50
+
+/**
+ * Restore the grid's working state from the URL query string, so a refresh or a
+ * shared link reopens the same filtered/sorted/paged view. Types are re-derived
+ * from the live columns, and only complete (queryable) filters are ever on the
+ * URL, so every restored condition is ready.
+ *
+ * @param {Array<{name: string, type: string}>} columns
+ */
+function readGridStateFromUrl(columns) {
+  const params = readUrlState()
+  const perPage = PAGE_SIZES.includes(Number(params.perPage))
+    ? Number(params.perPage)
+    : DEFAULT_PER_PAGE
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
+
+  let sort = null
+  if (params.sort) {
+    const [col, dir] = params.sort.split(':')
+    if (col) {
+      sort = { col, dir: dir === 'desc' ? 'desc' : 'asc' }
+    }
+  }
+
+  let filters = []
+  try {
+    const raw = params.filters ? JSON.parse(params.filters) : []
+    if (Array.isArray(raw)) {
+      filters = raw
+        .filter((f) => f && f.column && f.operator)
+        .map((f, i) => ({
+          id: `f${i}${Math.random().toString(36).slice(2, 6)}`,
+          column: f.column,
+          type: columns.find((c) => c.name === f.column)?.type ?? 'text',
+          operator: f.operator,
+          value: f.value ?? '',
+        }))
+    }
+  } catch {
+    filters = []
+  }
+
+  return { search: params.q ?? '', perPage, page, sort, filters }
+}
 
 /** localStorage slot for the View menu preferences (shape: `{types: boolean}`). */
 const VIEW_PREFS_KEY = 'dc.view.v1'
@@ -136,16 +187,42 @@ export function DataGrid({
   csvName,
   structural = false,
   rowEditing = null,
+  source = null,
 }) {
   const t = useStrings()
-  const [sort, setSort] = useState(null)
-  const [filter, setFilter] = useState('')
-  const [perPage, setPerPage] = useState(50)
-  const [page, setPage] = useState(1)
+
+  // Server-driven data: with a `source` (the explorer) the grid fetches a
+  // filtered/sorted/paginated slice from the `rows` endpoint. Without one (an
+  // in-memory SQL result set) it stays client-side over `table.rows`.
+  const serverMode = Boolean(source?.endpoint)
+
+  // On the very first mount, seed the working state from the URL so a refresh or
+  // shared link reopens the same view. Computed once (a ref, not per render); a
+  // later table switch resets to defaults instead — see the reset block below.
+  const initialGrid = useRef(null)
+  if (initialGrid.current === null) {
+    initialGrid.current = serverMode
+      ? readGridStateFromUrl(table.columns ?? [])
+      : { search: '', perPage: DEFAULT_PER_PAGE, page: 1, sort: null, filters: [] }
+  }
+  const ig = initialGrid.current
+
+  const [sort, setSort] = useState(ig.sort)
+  const [filter, setFilter] = useState(ig.search)
+  const [perPage, setPerPage] = useState(ig.perPage)
+  const [page, setPage] = useState(ig.page)
   const [copied, setCopied] = useState(null)
   const [view, setView] = useState('data')
   const [editor, setEditor] = useState(null)
   const [rowDelta, setRowDelta] = useState(0)
+
+  const [filters, setFilters] = useState(ig.filters)
+  const [hasMore, setHasMore] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [fetchError, setFetchError] = useState(null)
+  const [appliedFilters, setAppliedFilters] = useState(() => toPayload(ig.filters))
+  const [appliedSearch, setAppliedSearch] = useState(ig.search)
+  const fetchSeq = useRef(0)
 
   // View menu (gear) — which optional header detail is rendered.
   const [viewPrefs, setViewPrefs] = useState(readViewPrefs)
@@ -182,6 +259,11 @@ export function DataGrid({
     setColWidths(readColWidths(table.name))
     setSort(null)
     setFilter('')
+    setFilters([])
+    setAppliedFilters([])
+    setAppliedSearch('')
+    setHasMore(false)
+    setFetchError(null)
     setPage(1)
     setView('data')
     setEditor(null)
@@ -266,6 +348,92 @@ export function DataGrid({
   )
   const canEdit = editableTable && pkColumns.length > 0
 
+  // Masked columns can't be filtered on (probing them would leak the value the
+  // server took care to hide), so the builder never offers them.
+  const filterableColumns = useMemo(
+    () => (table.columns ?? []).filter((col) => !col.masked),
+    [table.columns],
+  )
+
+  // Debounce the filter builder + quick search so typing fires one query, not
+  // one per keystroke. Structured conditions are reduced to the wire payload here.
+  useEffect(() => {
+    if (!serverMode) {
+      return
+    }
+    const id = window.setTimeout(() => {
+      setAppliedFilters(toPayload(filters))
+      setAppliedSearch(filter)
+    }, 350)
+    return () => window.clearTimeout(id)
+  }, [serverMode, filters, filter])
+
+  // The server-driven data feed: refetch whenever the applied filters, search,
+  // sort, page or size change. The server returns `perPage + 1` rows, which it
+  // reports back as `hasMore` — no full-table count.
+  useEffect(() => {
+    if (!serverMode || showStructure) {
+      return
+    }
+    const seq = ++fetchSeq.current
+    setLoading(true)
+    sendJson(source.endpoint, 'POST', source.csrfToken, {
+      connection: source.connectionKey,
+      schema: source.schema,
+      table: table.name,
+      filters: appliedFilters,
+      search: appliedSearch || undefined,
+      sort: sort ? { column: sort.col, dir: sort.dir } : undefined,
+      page,
+      perPage,
+    }).then(({ ok, data }) => {
+      if (seq !== fetchSeq.current) {
+        return
+      }
+      setLoading(false)
+      if (ok) {
+        setRows(Array.isArray(data.rows) ? data.rows : [])
+        setHasMore(Boolean(data.hasMore))
+        setFetchError(null)
+        setRowDelta(0)
+        return
+      }
+      setRows([])
+      setHasMore(false)
+      setFetchError(data?.message ?? t('grid.requestFailed', { status: 0 }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    serverMode,
+    showStructure,
+    source?.endpoint,
+    source?.connectionKey,
+    source?.schema,
+    table.name,
+    appliedFilters,
+    appliedSearch,
+    sort,
+    page,
+    perPage,
+  ])
+
+  // Mirror the applied query state onto the URL (History API) so a refresh or a
+  // shared link restores it. Only the applied (debounced) values are written and
+  // defaults are omitted, keeping the URL clean; the table name is owned by the
+  // page shell.
+  useEffect(() => {
+    if (!serverMode) {
+      return
+    }
+    updateUrlState({
+      q: appliedSearch || null,
+      filters: appliedFilters.length ? JSON.stringify(appliedFilters) : null,
+      sort: sort ? `${sort.col}:${sort.dir}` : null,
+      page: page > 1 ? page : null,
+      perPage: perPage !== DEFAULT_PER_PAGE ? perPage : null,
+    })
+  }, [serverMode, appliedSearch, appliedFilters, sort, page, perPage])
+
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase()
     if (!q) {
@@ -290,12 +458,14 @@ export function DataGrid({
     return [...filtered].sort((a, b) => dir * compareValues(a[sort.col], b[sort.col], numeric))
   }, [filtered, sort, table.columns])
 
-  const pageCount = Math.max(1, Math.ceil(sorted.length / perPage))
-  const current = Math.min(page, pageCount)
+  // Server mode already returns exactly the page; client mode slices locally.
+  const pageCount = serverMode ? null : Math.max(1, Math.ceil(sorted.length / perPage))
+  const current = serverMode ? Math.max(1, page) : Math.min(page, pageCount)
   const start = (current - 1) * perPage
-  const pageRows = sorted.slice(start, start + perPage)
+  const pageRows = serverMode ? rows : sorted.slice(start, start + perPage)
 
-  const cycleSort = (name) =>
+  const cycleSort = (name) => {
+    setPage(1)
     setSort((s) => {
       if (!s || s.col !== name) {
         return { col: name, dir: 'asc' }
@@ -305,6 +475,7 @@ export function DataGrid({
       }
       return null
     })
+  }
 
   /** The shared "Copied" flash — one key at a time, cleared after ~1s. */
   const flashCopied = (key) => {
@@ -496,12 +667,8 @@ export function DataGrid({
       {/* Header bar */}
       <div className="dc-grid-head">
         <div className="dc-grid-titlebox">
-          {table.type === 'view' && (
-            <ViewIcon className="dc-grid-view-icon" />
-          )}
-          <h2 className="dc-grid-title">
-            {title ?? table.name}
-          </h2>
+          {table.type === 'view' && <ViewIcon className="dc-grid-view-icon" />}
+          <h2 className="dc-grid-title">{title ?? table.name}</h2>
           <span className="dc-grid-subtitle">
             {subtitle ??
               t('grid.subtitle', {
@@ -549,6 +716,17 @@ export function DataGrid({
               />
             </div>
 
+            {serverMode && (
+              <FilterAddButton
+                columns={filterableColumns}
+                value={filters}
+                onChange={(next) => {
+                  setFilters(next)
+                  setPage(1)
+                }}
+              />
+            )}
+
             {/* New row is the only labelled action — it is the only one that writes. */}
             {canEdit && (
               <button
@@ -575,11 +753,7 @@ export function DataGrid({
                 />
 
                 {viewMenuOpen && (
-                  <div
-                    role="menu"
-                    aria-label={t('grid.viewOptions')}
-                    className="dc-grid-menu"
-                  >
+                  <div role="menu" aria-label={t('grid.viewOptions')} className="dc-grid-menu">
                     <button
                       type="button"
                       role="menuitemcheckbox"
@@ -587,9 +761,7 @@ export function DataGrid({
                       onClick={toggleColumnTypes}
                       className="dc-grid-menu-item"
                     >
-                      <span
-                        className={cx('dc-grid-check', viewPrefs.types && 'on')}
-                      >
+                      <span className={cx('dc-grid-check', viewPrefs.types && 'on')}>
                         {viewPrefs.types && <CheckIcon className="dc-grid-check-icon" />}
                       </span>
                       {t('grid.columnTypes')}
@@ -599,7 +771,10 @@ export function DataGrid({
               </div>
               <GridIconButton
                 onClick={() =>
-                  downloadText(csvName ?? `${table.name}.csv`, toCsv(table.columns, sorted))
+                  downloadText(
+                    csvName ?? `${table.name}.csv`,
+                    toCsv(table.columns, serverMode ? rows : sorted),
+                  )
                 }
                 label={t('grid.exportCsv')}
                 icon={DownloadIcon}
@@ -610,14 +785,24 @@ export function DataGrid({
         )}
       </div>
 
+      {serverMode && !showStructure && filters.length > 0 && (
+        <div className="dc-grid-filterbar">
+          <FilterConditions
+            value={filters}
+            onChange={(next) => {
+              setFilters(next)
+              setPage(1)
+            }}
+          />
+        </div>
+      )}
+
       {showStructure ? (
         <TableStructure table={table} onJumpTo={onJumpTo} />
       ) : (
         <>
           {editableTable && pkColumns.length === 0 && (
-            <p className="dc-grid-nopk">
-              {t('grid.noPrimaryKey')}
-            </p>
+            <p className="dc-grid-nopk">{t('grid.noPrimaryKey')}</p>
           )}
 
           {/* Grid + the cell drawer beside it: the table keeps its own horizontal
@@ -627,9 +812,7 @@ export function DataGrid({
               <table className="dc-grid-table">
                 <thead className="dc-grid-thead">
                   <tr>
-                    <th className="dc-grid-num-head">
-                      #
-                    </th>
+                    <th className="dc-grid-num-head">#</th>
                     {table.columns.map((col) => {
                       const active = sort?.col === col.name
                       const width = colWidths[col.name]
@@ -648,12 +831,8 @@ export function DataGrid({
                             onClick={() => cycleSort(col.name)}
                             className="dc-grid-sort"
                           >
-                            {col.pk && (
-                              <KeyIcon className="dc-grid-key-icon" />
-                            )}
-                            {col.fk && !col.pk && (
-                              <LinkIcon className="dc-grid-faint-icon" />
-                            )}
+                            {col.pk && <KeyIcon className="dc-grid-key-icon" />}
+                            {col.fk && !col.pk && <LinkIcon className="dc-grid-faint-icon" />}
                             <span className="dc-grid-mono">{col.name}</span>
                             <SortIcon
                               className="dc-grid-faint-icon"
@@ -663,9 +842,7 @@ export function DataGrid({
                           {viewPrefs.types && (
                             <div className="dc-grid-coltype">
                               {col.type}
-                              {!col.nullable && (
-                                <span className="dc-grid-nn"> ·nn</span>
-                              )}
+                              {!col.nullable && <span className="dc-grid-nn"> ·nn</span>}
                             </div>
                           )}
                           {/* Right-edge grab handle — same gesture as the drawer's. */}
@@ -722,11 +899,10 @@ export function DataGrid({
                   })}
                   {pageRows.length === 0 && (
                     <tr>
-                      <td
-                        colSpan={table.columns.length + 2}
-                        className="dc-grid-empty"
-                      >
-                        {t('grid.noMatchingRows')}
+                      <td colSpan={table.columns.length + 2} className="dc-grid-empty">
+                        {serverMode && loading
+                          ? t('grid.loading')
+                          : (fetchError ?? t('grid.noMatchingRows'))}
                       </td>
                     </tr>
                   )}
@@ -834,13 +1010,20 @@ export function DataGrid({
           {/* Footer */}
           <div className="dc-grid-foot">
             <span>
-              {sorted.length === 0
-                ? t('grid.noRows')
-                : t('grid.showingRows', {
-                    from: start + 1,
-                    to: start + pageRows.length,
-                    total: sorted.length,
-                  })}
+              {serverMode
+                ? pageRows.length === 0
+                  ? t('grid.noRows')
+                  : t(hasMore ? 'grid.showingServerMore' : 'grid.showingServer', {
+                      from: start + 1,
+                      to: start + pageRows.length,
+                    })
+                : sorted.length === 0
+                  ? t('grid.noRows')
+                  : t('grid.showingRows', {
+                      from: start + 1,
+                      to: start + pageRows.length,
+                      total: sorted.length,
+                    })}
             </span>
             <label className="dc-grid-perpage">
               <span>{t('grid.perPage')}</span>
@@ -868,11 +1051,15 @@ export function DataGrid({
               >
                 {t('grid.previous')}
               </button>
-              <span>{t('grid.page', { current, total: pageCount })}</span>
+              <span>
+                {serverMode
+                  ? t('grid.pageOnly', { current })
+                  : t('grid.page', { current, total: pageCount })}
+              </span>
               <button
                 type="button"
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                disabled={current >= pageCount}
+                onClick={() => setPage((p) => (serverMode ? p + 1 : Math.min(pageCount, p + 1)))}
+                disabled={serverMode ? !hasMore : current >= pageCount}
                 className="dc-grid-pagebtn"
               >
                 {t('grid.next')}
@@ -991,12 +1178,7 @@ function Cell({ column, value, width, copied, active, onOpen, onContextMenu, onJ
       onContextMenu={onContextMenu}
       title={kind === 'null' ? 'NULL' : text}
       style={width ? { width, minWidth: width, maxWidth: width } : undefined}
-      className={cx(
-        'dc-grid-cell',
-        !width && 'cap',
-        numeric && 'num',
-        active && 'on',
-      )}
+      className={cx('dc-grid-cell', !width && 'cap', numeric && 'num', active && 'on')}
     >
       {inner()}
     </td>

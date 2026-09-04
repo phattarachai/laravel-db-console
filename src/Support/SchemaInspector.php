@@ -12,7 +12,7 @@ use Phattarachai\DbConsole\Exceptions\SqlGuardException;
  * schema tree and grid consume, with hidden tables dropped and masked columns
  * replaced before anything leaves the server.
  *
- * @phpstan-type DcColumn array{name: string, type: string, nullable: bool, pk: bool, fk: string|null, default: string|null}
+ * @phpstan-type DcColumn array{name: string, type: string, nullable: bool, pk: bool, fk: string|null, default: string|null, masked: bool}
  * @phpstan-type DcIndex array{name: string, type: string, columns: list<string>}
  * @phpstan-type DcForeignKey array{name: string, columns: list<string>, references: string, onDelete: string, onUpdate: string}
  * @phpstan-type DcTable array{name: string, type: string, rowCount: int, columns: list<DcColumn>, indexes: list<DcIndex>, foreignKeys: list<DcForeignKey>, rows: list<array<string, mixed>>}
@@ -252,6 +252,7 @@ final readonly class SchemaInspector
             'pk' => in_array($column['name'], $primaryColumns, strict: true),
             'fk' => $foreignKeyMap[$column['name']] ?? null,
             'default' => $this->normalizeDefault($column['default']),
+            'masked' => $this->redactor->isMaskedColumn($column['name']),
         ], $this->schema()->getColumns($table));
     }
 
