@@ -58,6 +58,17 @@ function pillName(connection) {
   return connection.label || connection.database || connection.key
 }
 
+/**
+ * A configured label is prose and reads in the UI font; the database-name
+ * fallback is an identifier and stays monospace.
+ */
+function PillName({ connection }) {
+  const name = pillName(connection)
+  const isIdentifier = name === connection.database || name === connection.key
+
+  return <span className={cx('dc-conn-name', !isIdentifier && 'label')}>{name}</span>
+}
+
 /** The non-interactive pill: what the single-connection console has always shown. */
 function ConnectionPill({ connection }) {
   const t = useStrings()
@@ -65,7 +76,7 @@ function ConnectionPill({ connection }) {
   return (
     <div className={PILL} title={connection.mode === 'write' ? undefined : t('toolbar.modeRead')}>
       <DatabaseIcon className="dc-conn-dbicon" />
-      <span className="dc-conn-name">{pillName(connection)}</span>
+      <PillName connection={connection} />
       {connection.driver && <span className="dc-conn-driver">· {connection.driver}</span>}
       <ReadLock mode={connection.mode} />
     </div>
@@ -135,7 +146,7 @@ export function ConnectionPicker({ connections, connection, indexEndpoint }) {
         className={cx(PILL, 'dc-conn-trigger')}
       >
         <DatabaseIcon className="dc-conn-dbicon" />
-        <span className="dc-conn-name">{connection ? pillName(connection) : '—'}</span>
+        {connection ? <PillName connection={connection} /> : <span className="dc-conn-name">—</span>}
         {connection?.driver && <span className="dc-conn-driver">· {connection.driver}</span>}
         <ReadLock mode={connection?.mode} />
         <ChevronIcon className={cx('dc-conn-chevron', open && 'on')} />

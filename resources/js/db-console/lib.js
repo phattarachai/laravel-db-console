@@ -66,6 +66,12 @@ export function classifyCell(value, column) {
   if (isJsonString(value)) {
     return { kind: 'json', text: prettyJson(value) }
   }
+  // MySQL stores a boolean as tinyint(1) and hands back 0/1; show it the way
+  // Postgres's `boolean` shows. Any other value (a tinyint(1) used as a small
+  // number) stays as it is.
+  if (column && isBooleanType(column.type) && ['0', '1'].includes(String(value))) {
+    return { kind: 'text', text: String(value) === '1' ? 'true' : 'false' }
+  }
   if (column && isNumericType(column.type)) {
     return { kind: 'number', text: String(value) }
   }

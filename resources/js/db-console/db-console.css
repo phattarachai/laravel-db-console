@@ -1838,6 +1838,9 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--dc-text);
 }
+.dc-root .dc-conn-name.label {
+  font-family: inherit;
+}
 .dc-root .dc-conn-driver {
   color: var(--dc-text-faint);
 }
