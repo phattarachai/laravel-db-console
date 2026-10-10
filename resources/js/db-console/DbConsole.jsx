@@ -269,9 +269,7 @@ function Console({
     }
 
     const filters =
-      column && value !== null && value !== undefined
-        ? [{ column, operator: 'eq', value }]
-        : []
+      column && value !== null && value !== undefined ? [{ column, operator: 'eq', value }] : []
 
     updateUrlState({
       filters: filters.length ? JSON.stringify(filters) : null,

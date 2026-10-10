@@ -222,7 +222,8 @@ export const DEFAULT_STRINGS = {
   'guard.blocked': ':keyword is blocked — never allowed on any connection.',
   'guard.read_only': ':keyword needs a writable connection; this one is read-only.',
   'guard.unsupported': ':keyword is not supported.',
-  'guard.select_into': ':keyword … INTO is blocked — a read cannot write a table, a file or a variable.',
+  'guard.select_into':
+    ':keyword … INTO is blocked — a read cannot write a table, a file or a variable.',
   'guard.blocked_function': ':function() is blocked — it acts outside the transaction.',
   'guard.read': 'Read-only',
   'guard.write': ':keyword changes data on this writable connection.',

@@ -1,7 +1,7 @@
 # Documentation index
 
 Maintainer-facing docs for `phattarachai/laravel-db-console` — an in-app web DB
-client (browse PostgreSQL tables, run guarded SQL) built on Inertia v3 + React 19.
+client (browse PostgreSQL, MySQL or MariaDB tables, run guarded SQL) built on Inertia + React 19.
 Read the doc whose topic matches what you are about to change before you change it.
 
 ## Architecture
@@ -12,8 +12,12 @@ Read the doc whose topic matches what you are about to change before you change 
   self-contained plain-CSS styling model, the server-driven grid (RowReader +
   filter contract + `hasMore` pagination + URL persistence), and the module map.
 - [Security model](security-model.md) — read-only-by-default posture, connection
-  modes, the SqlGuard, the Redactor, the confirm-token write handshake, RowWriter's
-  single-row safety, and production considerations.
+  modes, the SqlLexer + SqlGuard, the per-engine read-only transaction, the
+  Redactor, the confirm-token write handshake, RowWriter's single-row safety, and
+  production considerations.
+- [Database dialects](dialects.md) — what differs between PostgreSQL, MySQL and
+  MariaDB, where each difference lives (`Dialect`, `SqlLexer`), and how the suite
+  runs on all three.
 - [Introspection & data layer](introspection.md) — how SchemaInspector builds the
   shallow tree vs the lazy per-table details, row-count estimation, the seed sample
   vs the server-driven grid reads, and where column/index/FK metadata comes from.

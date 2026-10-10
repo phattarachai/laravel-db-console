@@ -930,8 +930,7 @@ export function DataGrid({
                       <td colSpan={table.columns.length + 2} className="dc-grid-empty">
                         {serverMode && loading
                           ? t('grid.loading')
-                          : (fetchError ??
-                            t(isFiltered ? 'grid.noMatchingRows' : 'grid.noRows'))}
+                          : (fetchError ?? t(isFiltered ? 'grid.noMatchingRows' : 'grid.noRows'))}
                       </td>
                     </tr>
                   )}

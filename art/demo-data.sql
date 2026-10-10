@@ -1,5 +1,6 @@
 --
--- Demo database behind the README screenshots.
+-- Demo database behind the README screenshots, for PostgreSQL.
+-- The same rows for MySQL and MariaDB are in demo-data-mysql.sql.
 --
 -- Entirely fictional: no real company, person, or address appears here. It
 -- exists so the screenshots show a believable schema — primary keys, foreign
