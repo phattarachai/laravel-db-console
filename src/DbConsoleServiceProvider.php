@@ -61,12 +61,19 @@ final class DbConsoleServiceProvider extends ServiceProvider
             __DIR__.'/../lang' => lang_path('vendor/db-console'),
         ], 'db-console-lang');
 
-        // Only the page needs to live in the host tree — `app.jsx`'s import.meta.glob
-        // never leaves ./pages. The module itself is reached through the
-        // `@db-console` Vite alias, so there is no second copy to drift.
-        $this->publishes([
-            __DIR__.'/../resources/js/pages/DbConsole.jsx' => resource_path('js/pages/DbConsole.jsx'),
-        ], 'db-console-inertia');
+        // Only the page needs to live in the host tree — the page resolver never
+        // leaves ./pages. The module itself is reached through the `@db-console`
+        // Vite alias, so there is no second copy to drift. A TypeScript host (the
+        // Laravel React starter kit) gets a .tsx page plus the alias's types, since
+        // its root view asks Vite for `pages/{component}.tsx`.
+        $this->publishes(DbConsole::usesTypeScript()
+            ? [
+                __DIR__.'/../resources/js/pages/DbConsole.tsx' => resource_path('js/pages/DbConsole.tsx'),
+                __DIR__.'/../resources/js/types/db-console.d.ts' => resource_path('js/types/db-console.d.ts'),
+            ]
+            : [
+                __DIR__.'/../resources/js/pages/DbConsole.jsx' => resource_path('js/pages/DbConsole.jsx'),
+            ], 'db-console-inertia');
     }
 
     private function registerSchedule(): void

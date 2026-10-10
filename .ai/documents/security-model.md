@@ -32,14 +32,16 @@ entirely, so the console 404s rather than 403s — a true kill switch.
 A browsable connection is resolved from `config/db-console.php` by `Connection`
 (`src/Support/Connection.php`), with the `defaults` block folded in. Only keys
 listed under `connections` are reachable — adding one to `database.php` does not
-expose it. PostgreSQL only: `db()` (line 77) throws `UnsupportedDriverException`
-for any other driver.
+expose it. `db()` throws `UnsupportedDriverException` for any driver outside
+`Connection::DRIVERS` (`pgsql`, `mysql`, `mariadb`); `dialect()` hands back the
+engine-specific half (see [dialects](dialects.md)).
 
 `mode` is the core posture:
 
 - **read** (default) — SELECT-family statements only, run inside a rolled-back
   `READ ONLY` transaction. Nothing can be written even if the guard were bypassed.
-- **write** — additionally allows INSERT/UPDATE/DELETE/MERGE and grid row editing.
+- **write** — additionally allows INSERT/UPDATE/DELETE/MERGE/REPLACE and grid row
+  editing.
 
 DDL is never allowed in either mode. `confirm_writes` decides whether a write on a
 writable connection needs the type-to-confirm handshake first (a row **delete**
@@ -47,49 +49,82 @@ always confirms regardless).
 
 ## SqlGuard — statement classification
 
-`SqlGuard::classify()` (`src/Support/SqlGuard.php:51`) is the enforcement point
-for both the SQL console and EXPLAIN. It returns `read` or `write`, or throws
+`SqlGuard::classify()` (`src/Support/SqlGuard.php`) is the enforcement point for
+both the SQL console and EXPLAIN. It returns `read` or `write`, or throws
 `SqlGuardException`. Steps, in order:
 
-1. Strip string literals, quoted identifiers and comments so their contents can't
-   smuggle a `;` or a keyword (`stripStringsAndComments`, line 138).
-2. Reject empty input and any remaining `;` — **one statement per run**.
-3. Read the first bareword keyword and classify it:
-   - `READ_KEYWORDS` (`select, with, explain, show, table, values`) → `read`.
-   - `DML_KEYWORDS` (`insert, update, delete, merge`) → `write`, but only on a
-     writable connection; on a read connection it throws `guard.read_only`.
-   - `BLOCKED_KEYWORDS` (DDL, session state, txn control: `drop, alter, create,
-     truncate, grant, revoke, copy, call, do, vacuum, reindex, comment, lock,
-     set, begin, commit, rollback, refresh`) → always rejected.
+1. Lex the statement with `SqlLexer` (`src/Support/SqlLexer.php`) using **the
+   connection's quoting rules**, so string literals, quoted identifiers and comments
+   can't smuggle a `;` or a keyword. Postgres: `$tag$…$tag$` and `E'…'` strings,
+   nested block comments, `"identifiers"`. MySQL/MariaDB: backslash escapes in
+   `'…'` and `"…"`, `` `identifiers` ``, `#` comments, `--` only when followed by
+   whitespace, and `/*! … */` / `/*M! … */` comments, whose body is **code** (the
+   server executes it).
+2. Whether a plain `'…'` honours backslash escapes is a session setting on both
+   engines (`standard_conforming_strings`, `NO_BACKSLASH_ESCAPES`), so the guard
+   lexes **twice**, with and without, and every check below must pass under both.
+3. Reject empty input and any remaining `;` — **one statement per run**.
+4. Read the first bareword keyword and classify it:
+   - `READ_KEYWORDS` (`select, with, explain, show, table, values, describe, desc`)
+     → `read`, unless the code contains `into` (`SELECT … INTO` a table, an
+     `OUTFILE`/`DUMPFILE` or a variable) → `guard.select_into`.
+   - `DML_KEYWORDS` (`insert, update, delete, merge, replace`) → `write`, but only on
+     a writable connection; on a read connection it throws `guard.read_only`.
+   - `BLOCKED_KEYWORDS` (DDL, session state, transaction control, server admin,
+     dynamic SQL — `drop, alter, create, truncate, set, lock, unlock, handler, load,
+     call, do, prepare, execute, flush, kill, install, use, start, …`) → always
+     rejected with `guard.blocked`.
    - Anything else → `guard.unsupported`.
-4. Scan every bare identifier against the hidden-table globs and refuse if any
-   matches (`assertNoHiddenTable`, line 103).
+5. Refuse any call to a `BLOCKED_FUNCTIONS` entry — functions that act outside the
+   transaction, which READ ONLY can't stop: server files (`load_file`,
+   `pg_read_file`, `lo_export`, …), another connection (`dblink*`), other sessions
+   (`pg_terminate_backend`), session settings (`set_config`, which could lift the
+   statement timeout). Quoted names are unwrapped first.
+6. Scan every identifier (quoted ones unwrapped) against the hidden-table globs.
 
 > [!NOTE]
 > The hidden-table scan is not a SQL parser: it checks every identifier-shaped
 > token, so an alias or column that happens to match a hidden-table glob is
-> refused too. A false positive is the deliberately safe direction.
+> refused too. A false positive is the deliberately safe direction. The function
+> list is a denylist and can't be complete — the README tells production installs
+> to connect read connections as a read-only database user.
 
-`classifySql` in `resources/js/db-console/sql-lib.js:228` is an exact client-side
-mirror — same keyword sets, same order, same message keys — but it is UX only
-(disables Run, labels the chip). The server guard is the gate.
+`classifySql` in `resources/js/db-console/sql-lib.js` is a client-side mirror —
+same lexer rules, keyword sets, order and message keys, taking the connection's
+`dialect` — but it is UX only (disables Run, labels the chip). The server guard is
+the gate.
+
+> [!WARNING]
+> Until 1.1.0 the guard's regexes didn't know dollar-quoted or `E'…'` strings, and a write ran through
+> `PDO::exec()`, so on a Postgres **write** connection
+> `UPDATE t SET a = $$'$$; DROP TABLE t; SELECT $$'$$` ran the DROP.
+> `tests/Feature/EngineSafetyTest.php` and `tests/Unit/SqlGuardTest.php` pin every
+> known hiding place per dialect.
 
 ## SqlRunner — execution isolation
 
-`SqlRunner` (`src/Support/SqlRunner.php`) runs the classified statement:
+`SqlRunner` (`src/Support/SqlRunner.php`) runs the classified statement through the
+connection's `Dialect` (`src/Support/Dialects/`):
 
-- A **read** runs inside a transaction with `SET TRANSACTION READ ONLY` and
-  `SET LOCAL statement_timeout`, and is **always rolled back** (`runRead`, line
-  86). Postgres itself refuses any write that slipped through.
-- A **write** runs in a plain transaction that commits only if nothing threw
-  (`runWrite`, line 118).
-- **EXPLAIN** is always plain `EXPLAIN`, never `ANALYZE`, inside the same
-  rolled-back READ ONLY transaction (`explain`, line 53) — the plan is computed,
-  the statement never executes. Gated by `db-console.explain`.
+- A **read** runs inside `Dialect::read()`: a READ ONLY transaction with the
+  timeout applied, **always rolled back**. Postgres: `SET TRANSACTION READ ONLY` +
+  `SET LOCAL statement_timeout`. MySQL/MariaDB: `SET TRANSACTION READ ONLY` before
+  the transaction begins, plus a session timeout restored afterwards; it refuses to
+  run inside an already-open transaction, whose read-write mode a savepoint would
+  inherit (`guard.open_transaction`).
+- A **write** runs inside `Dialect::write()`, which commits only if nothing threw.
+- Every statement is a **single server-side prepared statement**
+  (`Dialect::prepare()`: emulation off; on Postgres `PQexecParams`, which also works
+  behind a transaction-pooling PgBouncer). Neither engine will run a batch that way,
+  so even a guard bug can't turn one statement into two.
+- **EXPLAIN** is never `ANALYZE`, inside the same rolled-back READ ONLY transaction
+  — the plan is computed, the statement never executes. Gated by
+  `db-console.explain`.
 
 Read results are capped at the connection's `max_rows`; a further available row
-flips `truncated` (`rows`, line 182). Driver error prefixes are stripped so the
-console shows just the message.
+flips `truncated`. Driver error prefixes are stripped so the console shows just the
+message. Values that can't be JSON-encoded (Postgres `bytea` streams, MySQL binary
+strings) become `[binary]` (`RowValues`).
 
 ## Redactor — hidden tables & masked columns
 
@@ -151,8 +186,11 @@ The `preview()` statement shown in the confirm dialog interpolates bindings for
 ## Production considerations
 
 - Keep production connections `mode: read`. A read connection cannot write even
-  through the SQL console, because the READ ONLY transaction is enforced by
-  Postgres, not just the guard.
+  through the SQL console, because the READ ONLY transaction is enforced by the
+  engine, not just the guard.
+- Connect read connections as a **read-only database user** (no MySQL `FILE`
+  privilege, no Postgres superuser / `pg_read_server_files`). The guard's function
+  denylist can't know every function an engine offers; the privilege can.
 - If a write connection is genuinely needed, keep `confirm_writes` on so every
   write requires the typed handshake.
 - Use `hidden_tables` / `masked_columns` to keep secrets (tokens, password hashes,
@@ -167,8 +205,10 @@ The `preview()` statement shown in the confirm dialog interpolates bindings for
 ## Related files
 
 - `src/Http/Middleware/Authorize.php`, `src/DbConsole.php` — the access gate.
+- `src/Support/SqlLexer.php` — per-dialect literal/comment removal.
 - `src/Support/SqlGuard.php` — statement classification.
-- `src/Support/SqlRunner.php` — transaction isolation, EXPLAIN.
+- `src/Support/SqlRunner.php` — runs through the dialect, EXPLAIN.
+- `src/Support/Dialects/` — READ ONLY transaction, timeouts, single-statement prepare per engine.
 - `src/Support/RowReader.php` — the grid's structured-filter reads: column/operator whitelist, bindings, same READ ONLY transaction.
 - `src/Support/Redactor.php` — hidden tables & masked columns.
 - `src/Support/ConfirmToken.php` — the write handshake.

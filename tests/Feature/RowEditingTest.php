@@ -14,7 +14,7 @@ it('refuses to edit a row on a read-only connection', function (): void {
     $connection = Connection::resolve();
     $writer = new RowWriter($connection, new SchemaInspector($connection));
 
-    expect(fn () => $writer->apply('public', 'dc_owners', 'update', ['id' => 1], ['name' => 'nope']))
+    expect(fn () => $writer->apply(dcSchema(), 'dc_owners', 'update', ['id' => 1], ['name' => 'nope']))
         ->toThrow(SqlGuardException::class);
 });
 
@@ -23,7 +23,7 @@ it('refuses to write a masked column', function (): void {
     $connection = dcWritable();
     $writer = new RowWriter($connection, new SchemaInspector($connection));
 
-    expect(fn () => $writer->apply('public', 'dc_owners', 'update', ['id' => $owner->id], ['secret_token' => 'x']))
+    expect(fn () => $writer->apply(dcSchema(), 'dc_owners', 'update', ['id' => $owner->id], ['secret_token' => 'x']))
         ->toThrow(SqlGuardException::class);
 });
 
@@ -32,7 +32,7 @@ it('updates exactly one row through the row writer', function (): void {
     $connection = dcWritable();
     $writer = new RowWriter($connection, new SchemaInspector($connection));
 
-    $result = $writer->apply('public', 'dc_owners', 'update', ['id' => $owner->id], ['name' => 'dc-row-probe']);
+    $result = $writer->apply(dcSchema(), 'dc_owners', 'update', ['id' => $owner->id], ['name' => 'dc-row-probe']);
 
     expect($result['affected'])->toBe(1)
         ->and($result['row']['name'])->toBe('dc-row-probe')
@@ -50,7 +50,7 @@ it('still confirms a row delete even when confirm_writes is off', function (): v
 
     $response = actingAs(dcUser())
         ->postJson(route('db-console.row'), [
-            'schema' => 'public',
+            'schema' => dcSchema(),
             'table' => 'dc_items',
             'action' => 'delete',
             'pk' => ['id' => $itemId],
@@ -62,7 +62,7 @@ it('still confirms a row delete even when confirm_writes is off', function (): v
 
     actingAs(dcUser())
         ->postJson(route('db-console.row'), [
-            'schema' => 'public',
+            'schema' => dcSchema(),
             'table' => 'dc_items',
             'action' => 'delete',
             'pk' => ['id' => $itemId],
@@ -80,13 +80,27 @@ it('inserts a row without confirmation when confirm_writes is off', function ():
 
     actingAs(dcUser())
         ->postJson(route('db-console.row'), [
-            'schema' => 'public',
+            'schema' => dcSchema(),
             'table' => 'dc_items',
             'action' => 'create',
             'values' => ['name' => 'dc-insert-probe'],
         ])
         ->assertOk()
-        ->assertJsonPath('affected', 1);
+        ->assertJsonPath('affected', 1)
+        ->assertJsonPath('row.name', 'dc-insert-probe')
+        ->assertJsonPath('row.id', fn (mixed $id): bool => (int) $id === (int) DB::table('dc_items')->where('name', 'dc-insert-probe')->value('id'));
 
     expect(DB::table('dc_items')->where('name', 'dc-insert-probe')->exists())->toBeTrue();
+});
+
+it('saves a value equal to the one already stored', function (): void {
+    // MySQL reports rows *changed*, so this is 0 there unless the writer counts the match.
+    $owner = dcOwner('Same Name');
+    $connection = dcWritable();
+
+    $result = new RowWriter($connection, new SchemaInspector($connection))
+        ->apply(dcSchema(), 'dc_owners', 'update', ['id' => $owner->id], ['name' => 'Same Name']);
+
+    expect($result['affected'])->toBe(1)
+        ->and($result['row']['name'])->toBe('Same Name');
 });

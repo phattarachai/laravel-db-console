@@ -10,7 +10,7 @@ use Phattarachai\DbConsole\Support\SchemaInspector;
 use Phattarachai\DbConsole\Support\SqlRunner;
 
 it('introspects columns, indexes and foreign keys for a known table', function (): void {
-    $items = new SchemaInspector(Connection::resolve())->details('public', 'dc_items');
+    $items = new SchemaInspector(Connection::resolve())->details(dcSchema(), 'dc_items');
 
     expect($items)->not->toBeNull()
         ->and($items['type'])->toBe('table')
@@ -58,18 +58,18 @@ it('counts a whole schema in a fixed number of queries, however many tables it h
 });
 
 it('refuses a table outside the browsable schemas', function (): void {
-    expect(fn () => new SchemaInspector(Connection::resolve())->details('pg_catalog', 'pg_class'))
+    expect(fn () => new SchemaInspector(Connection::resolve())->details(...dcForeignTable()))
         ->toThrow(SqlGuardException::class);
 });
 
 it('refuses a hidden table and one that does not exist', function (): void {
     $inspector = new SchemaInspector(Connection::resolve());
 
-    expect(fn () => $inspector->details('public', 'dc_hidden'))->toThrow(SqlGuardException::class)
-        ->and(fn () => $inspector->details('public', 'no_such_table'))->toThrow(SqlGuardException::class);
+    expect(fn () => $inspector->details(dcSchema(), 'dc_hidden'))->toThrow(SqlGuardException::class)
+        ->and(fn () => $inspector->details(dcSchema(), 'no_such_table'))->toThrow(SqlGuardException::class);
 });
 
-it('fails loudly when a configured connection is not Postgres', function (): void {
+it('fails loudly when a configured connection uses an unsupported driver', function (): void {
     config()->set('db-console.connections', ['sqlite' => []]);
 
     expect(fn () => Connection::resolve('sqlite')->db())

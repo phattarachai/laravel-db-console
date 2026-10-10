@@ -188,6 +188,7 @@ export function DataGrid({
   structural = false,
   rowEditing = null,
   source = null,
+  seed = null,
 }) {
   const t = useStrings()
 
@@ -269,6 +270,28 @@ export function DataGrid({
     setEditor(null)
     setCellMenu(null)
     setCellView(null)
+  }
+
+  // A jump to a referenced row arrives as a `seed`: filters to apply to this
+  // table, once. Applied after the reset above, and also when the target is the
+  // table already open (a self-referencing foreign key).
+  const [appliedSeed, setAppliedSeed] = useState(null)
+  if (seed && seed !== appliedSeed && seed.table === table.name) {
+    const seeded = seed.filters.map((f, i) => ({
+      id: `s${i}${Math.random().toString(36).slice(2, 6)}`,
+      column: f.column,
+      type: table.columns?.find((c) => c.name === f.column)?.type ?? 'text',
+      operator: f.operator,
+      value: f.value,
+    }))
+    setAppliedSeed(seed)
+    setFilters(seeded)
+    setAppliedFilters(toPayload(seeded))
+    setFilter('')
+    setAppliedSearch('')
+    setSort(null)
+    setPage(1)
+    setView('data')
   }
 
   // Outside click / Escape for the View menu. Bound only while open, so the grid
@@ -457,6 +480,11 @@ export function DataGrid({
     const dir = sort.dir === 'asc' ? 1 : -1
     return [...filtered].sort((a, b) => dir * compareValues(a[sort.col], b[sort.col], numeric))
   }, [filtered, sort, table.columns])
+
+  // Whether an empty grid means "nothing matches" or "the table is empty".
+  const isFiltered = serverMode
+    ? appliedFilters.length > 0 || appliedSearch.trim() !== ''
+    : filter.trim() !== ''
 
   // Server mode already returns exactly the page; client mode slices locally.
   const pageCount = serverMode ? null : Math.max(1, Math.ceil(sorted.length / perPage))
@@ -902,7 +930,7 @@ export function DataGrid({
                       <td colSpan={table.columns.length + 2} className="dc-grid-empty">
                         {serverMode && loading
                           ? t('grid.loading')
-                          : (fetchError ?? t('grid.noMatchingRows'))}
+                          : (fetchError ?? t(isFiltered ? 'grid.noMatchingRows' : 'grid.noRows'))}
                       </td>
                     </tr>
                   )}
@@ -943,7 +971,7 @@ export function DataGrid({
                   icon={LinkIcon}
                   onClick={() => {
                     setCellMenu(null)
-                    onJumpTo?.(String(cellMenu.column.fk).split('.')[0])
+                    onJumpTo?.(...fkTarget(cellMenu.column.fk), cellMenu.value)
                   }}
                 >
                   {t('common.jumpTo', { target: cellMenu.column.fk })}
@@ -1133,6 +1161,15 @@ function GridIconButton({ onClick, label, icon: Icon, active, divided, ...rest }
   )
 }
 
+/**
+ * `customers.id` → `['customers', 'id']`: the referenced table and column, so a
+ * jump can filter the target table down to the referenced row.
+ */
+function fkTarget(fk) {
+  const [table, column] = String(fk).split('.')
+  return [table, column]
+}
+
 function Cell({ column, value, width, copied, active, onOpen, onContextMenu, onJumpTo }) {
   const t = useStrings()
   const { kind, text } = classifyCell(value, column)
@@ -1150,13 +1187,12 @@ function Cell({ column, value, width, copied, active, onOpen, onContextMenu, onJ
       return <span className="dc-grid-null">NULL</span>
     }
     if (column.fk && value !== null && value !== undefined) {
-      const target = String(column.fk).split('.')[0]
       return (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            onJumpTo?.(target)
+            onJumpTo?.(...fkTarget(column.fk), value)
           }}
           className="dc-grid-fk"
           title={t('common.jumpTo', { target: column.fk })}

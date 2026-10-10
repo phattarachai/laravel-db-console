@@ -18,10 +18,18 @@ route group (`registerRoutes()`, line 40) under `db-console.path` with the host'
 dropped by editing config. In console context it also registers publishing tags,
 the two commands, and a daily `db-console:prune` schedule.
 
-The only file published into the host tree is the Inertia page
-(`resources/js/pages/DbConsole.jsx`); the module itself is reached through a
-`@db-console` Vite alias, so there is no second copy to drift. See the publish
-tags in `registerPublishing()` (line 50).
+The only file published into the host tree is the Inertia page —
+`resources/js/pages/DbConsole.jsx`, or `DbConsole.tsx` plus
+`resources/js/types/db-console.d.ts` when the host has `resources/js/app.tsx`
+(`DbConsole::usesTypeScript()`; the React starter kit's root view asks Vite for
+`pages/{component}.tsx`). The module itself is reached through a `@db-console` Vite
+alias, so there is no second copy to drift. See `registerPublishing()`.
+
+The page is SSR-safe and layout-free: it reads the CSRF meta only when `document`
+exists, and sets `DbConsolePage.layout = []`, which beats a host's
+`createInertiaApp({ layout })` default. The module root renders an empty `.dc-root`
+shell until it is in the browser (`useSyncExternalStore` with a `false` server
+snapshot), because its first render reads the URL and `localStorage`.
 
 ## Request / data flow
 
@@ -42,7 +50,7 @@ resources/js/db-console/DbConsole.jsx  (the module root)
   ├─ grid page/filter► POST endpoints.rows   ──► controller::rows
   │                       └► RowReader::page()  (filtered/sorted, paginated)
   ├─ SQL run       ──► POST endpoints.query  ──► controller::query
-  │                       └► SqlRunner::run()  (guarded, in a txn)
+  │                       └► SqlRunner::run()  (guarded, in the dialect's txn)
   ├─ EXPLAIN       ──► POST endpoints.explain ──► SqlRunner::explain()
   ├─ row edit      ──► POST endpoints.row     ──► RowWriter::apply()
   ├─ favourite     ──► POST endpoints.favorite──► FavoriteStore::toggle()
@@ -85,8 +93,8 @@ right-click cell menu, driven by `RowForm`.
 
 **SQL console (`sql`).** `SqlConsole` owns an editor plus tabbed
 results/plan/saved/history. Run POSTs the raw statement to `endpoints.query`;
-the server classifies and runs it. `classifySql` (`sql-lib.js`) is a client-side
-mirror of the server guard — it disables Run and labels the chip, but the server
+the server classifies and runs it. `classifySql(sql, mode, dialect)` (`sql-lib.js`)
+is a client-side mirror of the server guard and lexer — it disables Run and labels the chip, but the server
 is the real gate. A write on a `confirm_writes` connection comes back 409 with a
 single-use token, which the type-to-confirm panel replays. The SQL result grid
 reuses `DataGrid` with no `rowEditing` **and no `source`**, so it stays in the
@@ -105,11 +113,11 @@ Switching connection is a full page load (`?conn=<key>`), not a patch — see
 | File | Owns |
 | --- | --- |
 | `index.js` | Public exports: `DbConsole`, strings context. |
-| `DbConsole.jsx` | Module root — toolbar, scheme toggle, mode switch, fatal state; wires sidebar + main area; holds `selected`, favourites, `useTableDetails`. |
+| `DbConsole.jsx` | Module root — client-only mount, toolbar, scheme toggle, mode switch, fatal state; wires sidebar + main area; holds `selected`, favourites, `useTableDetails`, and the FK-jump `seed`. |
 | `Sidebar.jsx` | Schema→table/view tree, name filter, favourites-only filter, per-table lazy column list, double-click-to-insert in SQL mode. |
 | `DataGrid.jsx` | Dual-mode grid. **Server-driven** when given a `source` prop (the explorer): POSTs to `endpoints.rows` for a filtered/sorted/paged slice, `hasMore` next/prev, view state on the URL. **Client-side** without it (SQL results): filter/sort/paginate over the in-memory rows. Both share sticky sortable header, typed cell rendering, FK jump, CSV export, column resize, right-click cell menu; hosts row editing when enabled. |
 | `FilterBar.jsx` | The Adminer-style per-field filter builder — exports `FilterAddButton` (the `+ filter` trigger + column menu in the toolbar) and `FilterConditions` (the row of active conditions + clear-all under the header). Masked columns are never offered. |
-| `filter-lib.js` | Maps a column's Postgres type to its available operators and value-input shape (`operatorsFor`, `valueShapeFor`), and reduces the builder's working conditions to the `{column, operator, value}` wire payload `RowReader` expects (`toPayload`). UX only — the server re-whitelists. |
+| `filter-lib.js` | Maps a column's type (Postgres or MySQL; `tinyint(1)` is boolean) to its available operators and value-input shape (`operatorsFor`, `valueShapeFor`), and reduces the builder's working conditions to the `{column, operator, value}` wire payload `RowReader` expects (`toPayload`). UX only — the server re-whitelists. |
 | `TableStructure.jsx` | The Structure tab — columns/indexes/foreign keys tables. |
 | `CellDrawer.jsx` | Side inspector for one cell; JSON pretty/raw with a local highlighter. |
 | `RowForm.jsx` | Create/update/delete modal; typed fields, null toggle, changed-only payload, in-form confirm gate. |
@@ -118,7 +126,7 @@ Switching connection is a full page load (`?conn=<key>`), not a patch — see
 | `ConnectionPicker.jsx` | Toolbar connection pill + multi-connection dropdown (switch = full reload). |
 | `useTableDetails.js` | Lazy, cached per-table detail fetching. |
 | `lib.js` | Dependency-free helpers: `cx`, cell classification, CSV, `sendJson`, localStorage prefs (scheme, favourites-only, column widths), URL console mode, and the generic query-string state helpers `readUrlState`/`updateUrlState` the explorer grid persists its view through. |
-| `sql-lib.js` | SQL tokenizer, light formatter, and `classifySql` (client mirror of `SqlGuard`). |
+| `sql-lib.js` | SQL tokenizer, light formatter, `lexSql` (client mirror of `SqlLexer`) and `classifySql` (client mirror of `SqlGuard`). |
 | `strings.js` | Flat dotted-key English defaults + `useStrings`/`translate`; host overrides via the `strings` prop (same shape as `lang/{locale}/ui.php`). |
 | `icons.jsx` | Shared SVG glyphs (grid-local copy/gear icons live in `DataGrid.jsx`). |
 
@@ -166,8 +174,10 @@ typed SQL:
 - Operators are a fixed set (`RowReader.php:35-41`): scalar `eq / ne / lt / lte /
   gt / gte / contains / starts / ends`, list `in / nin`, `between`, and the
   value-less `is_null / not_null / is_true / is_false`. `contains/starts/ends` are
-  `ILIKE` with the term's `%`/`_` escaped (`escapeLike`, `RowReader.php:321`).
-- The `search` string is a single `ILIKE` ORed across every text column
+  a case-insensitive match (`ILIKE` on Postgres, collation-driven `LIKE` on MySQL)
+  with the term's `%`/`_` escaped and an explicit `ESCAPE '!'` (`whereLike`,
+  `escapeLike`).
+- The `search` string is a single such match ORed across every text column
   (`applySearch`, `RowReader.php:183`), wrapped so it ANDs with the filters.
 - `sort` is `{column, dir}`, always followed by the primary key for a stable order
   (`applySort`, `RowReader.php:211`).
@@ -178,8 +188,14 @@ against the fixed set (`assertOperator`, `RowReader.php:276`) — masked columns
 cannot be filtered on, so their values can't be recovered by probing, the same
 line `RowWriter` draws for writes. Every condition compiles through the query
 builder **with bindings**, and the read runs inside the same always-rolled-back
-`READ ONLY` transaction as `SqlRunner` (`read`, `RowReader.php:230`), so Postgres
+`READ ONLY` transaction as `SqlRunner` (`Dialect::read()`), so the engine
 itself refuses a write that slipped through.
+
+**FK jump.** A foreign-key cell (or the cell menu's "Go to …") calls
+`onJumpTo(table, column, value)`. `DbConsole.jumpTo` writes an `eq` filter for the
+referenced column onto the URL and hands the grid a `seed`; the grid applies it
+after its table-switch reset (and also when the target is the open table, for a
+self-referencing key). The result is an ordinary filter the viewer can edit.
 
 Pagination is **"one more than asked"**: the reader offsets by page and fetches
 `perPage + 1` rows, reporting `hasMore` from the overflow and slicing back to
@@ -207,4 +223,5 @@ the filter menu (`DataGrid.jsx:353`).
 - `src/Support/RowReader.php` — the server-driven grid read (filters/sort/pagination).
 - `resources/js/db-console/FilterBar.jsx`, `filter-lib.js` — the filter builder + its type→operator map.
 - `resources/js/db-console/db-console.css` — the single self-contained stylesheet (scoped `.dc-root`, `--dc-*` tokens, primitives + per-component sections, FilterBar rules appended).
-- `src/Console/DoctorCommand.php` — install checks (driver, migrations, routes, published page, Vite alias — no Tailwind wiring).
+- `src/Console/DoctorCommand.php` — install checks (driver, migrations, routes, published page and its language/version, Vite alias in `vite.config.{ts,js,mts,mjs}` — no Tailwind wiring).
+- `src/Support/Dialects/` — the per-engine half; see [dialects](dialects.md).

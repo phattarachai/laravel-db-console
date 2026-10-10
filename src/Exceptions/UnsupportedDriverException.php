@@ -7,18 +7,19 @@ namespace Phattarachai\DbConsole\Exceptions;
 use RuntimeException;
 
 /**
- * Thrown before any query runs when a configured connection is not PostgreSQL.
+ * Thrown before any query runs when a configured connection is not PostgreSQL,
+ * MySQL or MariaDB.
  *
  * The message names both the connection and the driver on purpose: someone
- * installing this into a MySQL project should understand why in one read,
- * rather than meeting a stack trace from `pg_class`.
+ * pointing this at a SQLite or SQL Server connection should understand why in
+ * one read, rather than meeting a stack trace from a catalog query.
  */
 final class UnsupportedDriverException extends RuntimeException
 {
     public static function for(string $connection, string $driver): self
     {
         return new self(sprintf(
-            'DB Console supports PostgreSQL only. Connection [%s] uses driver [%s].',
+            'DB Console supports PostgreSQL, MySQL and MariaDB. Connection [%s] uses driver [%s].',
             $connection,
             $driver,
         ));

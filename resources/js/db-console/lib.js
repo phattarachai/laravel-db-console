@@ -27,6 +27,14 @@ export function cx(...args) {
 
 const NUMERIC_TYPES = /int|serial|numeric|decimal|real|double|money|float/i
 
+/**
+ * A column holds a boolean: Postgres `boolean`, or MySQL's `tinyint(1)` —
+ * MySQL has no boolean type and `BOOLEAN` is stored as exactly that.
+ */
+export function isBooleanType(type) {
+  return /bool|^tinyint\(1\)/i.test(type ?? '')
+}
+
 /** A column holds numbers → right-align + tabular figures. */
 export function isNumericType(type) {
   return NUMERIC_TYPES.test(type ?? '')

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
 import { ConnectionPicker } from './ConnectionPicker'
 import { DataGrid } from './DataGrid'
@@ -77,6 +77,16 @@ export function DbConsole({
 }) {
   const copy = useMemo(() => ({ ...DEFAULT_STRINGS, ...(strings ?? {}) }), [strings])
 
+  // Client-only. The console reads the URL, localStorage and the viewer's
+  // scheme on its first render, none of which exist under Inertia SSR — so the
+  // server (and the hydrating first paint) render an empty shell, and the
+  // console mounts once it is in the browser. Nothing to hydrate, no mismatch.
+  const mounted = useSyncExternalStore(subscribeNothing, isBrowser, isServer)
+
+  if (!mounted) {
+    return <div className="dc-root dc-shell" />
+  }
+
   return (
     <StringsContext.Provider value={copy}>
       <Console
@@ -96,6 +106,11 @@ export function DbConsole({
     </StringsContext.Provider>
   )
 }
+
+/** `useSyncExternalStore` plumbing: false on the server and while hydrating, true after. */
+const subscribeNothing = () => () => {}
+const isBrowser = () => true
+const isServer = () => false
 
 /**
  * Logo + app name. A plain `<a>` (not an Inertia link) when `brand.url` is set:
@@ -242,12 +257,29 @@ function Console({
     updateUrlState({ table: table?.name ?? null })
   }, [])
 
-  const jumpTo = (name) => {
+  // A foreign-key jump: open the referenced table and, when the referencing
+  // value is known, filter it to that row with an ordinary per-field filter —
+  // which the viewer can see, edit or clear like any other.
+  const [seed, setSeed] = useState(null)
+
+  const jumpTo = (name, column, value) => {
     const target = entries.find((entry) => entry.table.name === name)?.table
-    if (target) {
-      selectTable(target)
-      changeMode('explorer')
+    if (!target) {
+      return
     }
+
+    const filters =
+      column && value !== null && value !== undefined ? [{ column, operator: 'eq', value }] : []
+
+    updateUrlState({
+      filters: filters.length ? JSON.stringify(filters) : null,
+      q: null,
+      sort: null,
+      page: null,
+    })
+    setSeed({ table: name, filters })
+    selectTable(target)
+    changeMode('explorer')
   }
 
   // In SQL mode, double-clicking a table/column in the sidebar inserts its name
@@ -368,6 +400,7 @@ function Console({
                 editorRef={editorRef}
                 connectionKey={connection?.key}
                 mode={connection?.mode ?? 'read'}
+                dialect={connection?.dialect ?? 'pgsql'}
                 confirmWrites={connection?.confirmWrites ?? true}
                 features={features}
                 initialSql={shared?.sql ?? sql?.defaultQuery ?? ''}
@@ -377,6 +410,7 @@ function Console({
               <DataGrid
                 table={selectedDetail}
                 onJumpTo={jumpTo}
+                seed={seed}
                 structural
                 source={{
                   endpoint: endpoints?.rows,

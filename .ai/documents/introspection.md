@@ -1,7 +1,9 @@
 # Introspection & data layer
 
 `SchemaInspector` (`src/Support/SchemaInspector.php`) is the only thing that reads
-the target database's structure. It builds two payloads with very different costs:
+the target database's structure — through Laravel's schema builder for columns,
+indexes and foreign keys, and through the connection's [dialect](dialects.md) for
+row estimates and object kinds. It builds two payloads with very different costs:
 a **shallow tree** for the whole schema, shipped with the page, and **full
 details** for one table at a time, fetched lazily. The split is the reason the
 console opens in a fixed handful of queries no matter how large the schema is.
@@ -17,10 +19,11 @@ deliberately shallow: columns, indexes, foreign keys and a row sample are ~six
 queries and hundreds of KB **per object**, which on a 150-table database would be
 ~800 queries and megabytes of JSON before the viewer clicks anything.
 
-**`details(schema, name)`** (line 58) returns one object in full: columns,
+**`details(schema, name)`** returns one object in full: columns,
 indexes, foreign keys, row count and the row sample. It asserts the schema is in
-the connection's whitelist and the table isn't hidden, then reads `relkind` from
-the catalog to decide `table` vs `view` (a materialised view counts as a view).
+the connection's whitelist and the table isn't hidden, then asks
+`Dialect::kindOf()` to decide `table` vs `view` from the catalog (a materialised
+view counts as a view).
 The frontend fetches this per table via `useTableDetails`
 (`resources/js/db-console/useTableDetails.js`), cached per `schema.table` and
 never fetched twice.
@@ -33,24 +36,27 @@ only — used by `RowWriter` to validate a row edit.
 Counting exactly is the expensive part, so counts come from the planner first and
 fall back to `count(*)` only where the estimate is useless.
 
-For the whole tree, `rowCounts()` (line 116) does at most two round trips:
+For the whole tree, `rowCounts()` does at most two round trips:
 
-1. `estimates()` (line 140) reads `pg_class.reltuples` for every relation in the
-   schema in one catalog query. Postgres reports `-1` for a relation never
-   analysed; those are floored to 0.
+1. `Dialect::estimates()` reads every relation's estimate in the schema in one
+   catalog query — `pg_class.reltuples` on Postgres (`-1` for a relation never
+   analysed), `information_schema.tables.table_rows` on MySQL/MariaDB (`NULL` for a
+   view). Both floor to 0.
 2. Tables whose estimate is 0 (never analysed, or genuinely empty) are collected
-   and counted exactly in `exactCounts()` (line 163), which folds up to
-   `COUNT_BATCH` (50) `count(*)` selects into a single `UNION ALL`.
+   and counted exactly in `exactCounts()`, which folds up to `COUNT_BATCH` (50)
+   `count(*)` selects into a single `UNION ALL`, identifiers quoted by the dialect.
 
 Views are never counted — a view's count is the cost of running it — so they
 report 0 in the tree.
 
-For a single opened table, `rowCount()` (line 331) takes the `pg_class` estimate
-when it is positive, returns 0 for a view, and otherwise runs one `count(*)`.
+For a single opened table, `rowCount()` takes `Dialect::rowEstimate()` when it is
+positive, returns 0 for a view, and otherwise runs one `count(*)`.
 
 > [!NOTE]
 > Tree row counts are estimates for anything analysed — the grid subtitle shows
-> them with a `~`. They can lag the true count until the next ANALYZE/autovacuum.
+> them with a `~` and the sidebar's tooltip says "estimated". They can lag the true
+> count until the next ANALYZE/autovacuum, and on MySQL for up to
+> `information_schema_stats_expiry` (a day by default).
 
 ## Column, index & FK metadata
 
@@ -64,8 +70,8 @@ Metadata comes from Laravel's schema builder (`getColumns`, `getIndexes`,
   `pk` is set by membership in the primary-key column list; `fk` is
   `foreign_table.foreign_column` from the first FK that starts on that column
   (`foreignKeyMap`, line 305); blank defaults are normalised to `null`.
-- **Indexes** (`indexes`, line 268): each index's `type` is derived to one of
-  `PRIMARY | UNIQUE | GIN | INDEX` (`indexType`, line 280).
+- **Indexes** (`indexes`): each index's `type` is derived to one of
+  `PRIMARY | UNIQUE | GIN | GIST | FULLTEXT | SPATIAL | INDEX` (`indexType`).
 - **Foreign keys** (`foreignKeys`, line 320): `{name, columns, references,
   onDelete, onUpdate}`, actions upper-cased. The grid and structure view use
   `references` to offer a jump to the referenced table.
@@ -89,10 +95,11 @@ they cannot be filtered on, matching the server whitelist in `RowReader`.
 
 ## Identifier quoting
 
-The `public` schema stays unqualified so its queries are byte-for-byte the
-pre-multi-schema ones (`qualify`, line 368). The one place a statement is built as
-a string rather than through the builder — the batched `count(*)` — quotes
-identifiers explicitly (`quoteQualified`, line 377).
+The default schema — `public`, or the MySQL connection's own database — stays
+unqualified so its queries are byte-for-byte the pre-multi-schema ones (`qualify`).
+The one place a statement is built as a string rather than through the builder —
+the batched `count(*)` — quotes identifiers with `Dialect::quoteQualified()`
+(`"schema"."table"` or `` `db`.`table` ``).
 
 ## The console's own state tables
 
@@ -113,7 +120,7 @@ ever set.
 `db-console:prune` (`src/Console/PruneCommand.php`, scheduled daily) trims history
 by age then to the newest `keep_rows` per owner, and clears expired shares. Saved
 queries and favourites are never pruned. It deletes in explicit key batches
-because Postgres has no `DELETE ... LIMIT`.
+because Postgres has no `DELETE ... LIMIT` (MySQL does, but one portable path is kept).
 
 ## Related files
 

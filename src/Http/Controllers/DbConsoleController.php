@@ -21,7 +21,7 @@ use Phattarachai\DbConsole\Support\SchemaInspector;
 use Phattarachai\DbConsole\Support\SqlRunner;
 
 /**
- * The whole console. Serves live Postgres introspection, runs guarded SQL, edits
+ * The whole console. Serves live Postgres / MySQL / MariaDB introspection, runs guarded SQL, edits
  * single rows, and owns the saved/history/share endpoints.
  *
  * Endpoint URLs are handed to the page as props rather than resolved in JS, so
@@ -314,7 +314,7 @@ final class DbConsoleController extends Controller
     }
 
     /**
-     * @return list<array{key: string, name: string, label: string, database: string, driver: string, mode: string, confirmWrites: bool}|array{key: string, label: string, error: string}>
+     * @return list<array{key: string, name: string, label: string, database: string, driver: string, dialect: string, mode: string, confirmWrites: bool}|array{key: string, label: string, error: string}>
      */
     private function connectionPayloads(): array
     {
@@ -324,7 +324,11 @@ final class DbConsoleController extends Controller
             try {
                 $payloads[] = Connection::resolve((string) $key)->payload();
             } catch (UnsupportedDriverException $exception) {
-                $payloads[] = ['key' => (string) $key, 'label' => (string) $key, 'error' => $exception->getMessage()];
+                $payloads[] = [
+                    'key' => (string) $key,
+                    'label' => (string) (config("db-console.connections.{$key}.label") ?? $key),
+                    'error' => $exception->getMessage(),
+                ];
             }
         }
 

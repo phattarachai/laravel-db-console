@@ -8,7 +8,7 @@ it('serves one table in full', function (): void {
     dcOwner();
 
     actingAs(dcUser())
-        ->getJson(route('db-console.table', ['table' => 'dc_items', 'schema' => 'public']))
+        ->getJson(route('db-console.table', ['table' => 'dc_items', 'schema' => dcSchema()]))
         ->assertOk()
         ->assertJsonPath('name', 'dc_items')
         ->assertJsonPath('type', 'table')
@@ -40,7 +40,7 @@ it('refuses a hidden table', function (): void {
 
 it('refuses a schema the connection cannot browse', function (): void {
     actingAs(dcUser())
-        ->getJson(route('db-console.table', ['table' => 'pg_class', 'schema' => 'pg_catalog']))
+        ->getJson(route('db-console.table', ['table' => dcForeignTable()[1], 'schema' => dcForeignTable()[0]]))
         ->assertStatus(422);
 });
 

@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace Phattarachai\DbConsole\Support;
 
-use Illuminate\Database\Connection as DatabaseConnection;
 use PDO;
 use PDOException;
 use PDOStatement;
 use Phattarachai\DbConsole\Exceptions\SqlGuardException;
-use Throwable;
 
 /**
  * Runs one guarded statement on a resolved connection.
  *
  * A read runs inside a `READ ONLY` transaction that is always rolled back, so
- * Postgres itself refuses any write the guard somehow let through. A write runs
- * in a plain transaction that commits only when nothing threw. EXPLAIN is always
- * a read, never ANALYZE.
+ * the engine itself refuses any write the guard somehow let through. A write
+ * runs in a plain transaction that commits only when nothing threw. EXPLAIN is
+ * always a read, never ANALYZE. How each of those is done per engine lives in
+ * the connection's {@see Dialects\Dialect}.
+ *
+ * Every statement is a single server-side prepared statement, so the engine
+ * also refuses a second statement even if one got past the guard.
  *
  * @phpstan-type DcSqlColumn array{name: string, type: string}
  */
@@ -55,28 +57,17 @@ final readonly class SqlRunner
         new SqlGuard($this->connection)->classify($sql);
 
         $db = $this->connection->db();
+        $dialect = $this->connection->dialect();
         $startedAt = hrtime(as_number: true);
 
-        $db->beginTransaction();
-
         try {
-            $db->statement('SET TRANSACTION READ ONLY');
-            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
-
-            $statement = $this->query($db, 'EXPLAIN '.$sql);
-
-            return [
+            return $dialect->read($db, $this->connection->timeout, fn (): array => [
                 'kind' => 'explain',
-                'plan' => array_map(
-                    fn (mixed $line): string => (string) $line,
-                    array_values($statement->fetchAll(PDO::FETCH_COLUMN, 0)),
-                ),
+                'plan' => $dialect->explain($db, $sql),
                 'elapsedMs' => $this->elapsedSince($startedAt),
-            ];
+            ]);
         } catch (PDOException $exception) {
             throw $this->wrap($exception);
-        } finally {
-            $this->rollBackQuietly($db);
         }
     }
 
@@ -86,29 +77,26 @@ final readonly class SqlRunner
     private function runRead(string $sql): array
     {
         $db = $this->connection->db();
+        $dialect = $this->connection->dialect();
         $startedAt = hrtime(as_number: true);
 
-        $db->beginTransaction();
-
         try {
-            $db->statement('SET TRANSACTION READ ONLY');
-            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
+            return $dialect->read($db, $this->connection->timeout, function () use ($db, $dialect, $sql, $startedAt): array {
+                $statement = $dialect->prepare($db, $sql);
+                $statement->execute();
 
-            $statement = $this->query($db, $sql);
+                [$rows, $truncated] = $this->rows($statement);
 
-            [$rows, $truncated] = $this->rows($statement);
-
-            return [
-                'kind' => 'read',
-                'columns' => $this->columns($statement),
-                'rows' => $this->connection->redactor()->maskRows($rows),
-                'elapsedMs' => $this->elapsedSince($startedAt),
-                'truncated' => $truncated,
-            ];
+                return [
+                    'kind' => 'read',
+                    'columns' => $this->columns($statement),
+                    'rows' => $this->connection->redactor()->maskRows($rows),
+                    'elapsedMs' => $this->elapsedSince($startedAt),
+                    'truncated' => $truncated,
+                ];
+            });
         } catch (PDOException $exception) {
             throw $this->wrap($exception);
-        } finally {
-            $this->rollBackQuietly($db);
         }
     }
 
@@ -118,42 +106,23 @@ final readonly class SqlRunner
     private function runWrite(string $sql): array
     {
         $db = $this->connection->db();
+        $dialect = $this->connection->dialect();
         $startedAt = hrtime(as_number: true);
 
-        $db->beginTransaction();
-
         try {
-            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
+            return $dialect->write($db, $this->connection->timeout, function () use ($db, $dialect, $sql, $startedAt): array {
+                $statement = $dialect->prepare($db, $sql);
+                $statement->execute();
 
-            $affected = $db->getPdo()->exec($sql);
-
-            $db->commit();
-
-            return [
-                'kind' => 'write',
-                'rowsAffected' => (int) $affected,
-                'elapsedMs' => $this->elapsedSince($startedAt),
-            ];
+                return [
+                    'kind' => 'write',
+                    'rowsAffected' => $statement->rowCount(),
+                    'elapsedMs' => $this->elapsedSince($startedAt),
+                ];
+            });
         } catch (PDOException $exception) {
-            $this->rollBackQuietly($db);
-
             throw $this->wrap($exception);
-        } catch (Throwable $throwable) {
-            $this->rollBackQuietly($db);
-
-            throw $throwable;
         }
-    }
-
-    private function query(DatabaseConnection $db, string $sql): PDOStatement
-    {
-        $statement = $db->getPdo()->query($sql);
-
-        if (! $statement instanceof PDOStatement) {
-            throw new SqlGuardException(__('db-console::guard.failed'));
-        }
-
-        return $statement;
     }
 
     /**
@@ -161,13 +130,14 @@ final readonly class SqlRunner
      */
     private function columns(PDOStatement $statement): array
     {
+        $dialect = $this->connection->dialect();
         $columns = [];
 
         for ($i = 0, $count = $statement->columnCount(); $i < $count; $i++) {
             $meta = $statement->getColumnMeta($i) ?: [];
             $columns[] = [
                 'name' => $meta['name'] ?? 'column_'.$i,
-                'type' => $this->displayType((string) ($meta['native_type'] ?? 'text')),
+                'type' => $dialect->displayType((string) ($meta['native_type'] ?? 'text')),
             ];
         }
 
@@ -190,34 +160,10 @@ final readonly class SqlRunner
                 break;
             }
 
-            $rows[] = $this->normalizeRow($row);
+            $rows[] = RowValues::normalize($row);
         }
 
         return [$rows, $truncated];
-    }
-
-    /**
-     * @param  array<string, mixed>  $row
-     * @return array<string, mixed>
-     */
-    private function normalizeRow(array $row): array
-    {
-        return array_map(fn (mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
-    }
-
-    /** Friendlier names for the Postgres native types PDO reports. */
-    private function displayType(string $native): string
-    {
-        return match (strtolower($native)) {
-            'int2' => 'smallint',
-            'int4' => 'integer',
-            'int8' => 'bigint',
-            'float4' => 'real',
-            'float8' => 'double precision',
-            'bool' => 'boolean',
-            'bpchar' => 'char',
-            default => strtolower($native),
-        };
     }
 
     private function elapsedSince(float|int $startedAt): int
@@ -236,14 +182,5 @@ final readonly class SqlRunner
         $message = preg_replace('/^SQLSTATE\[[^\]]+\]:?\s*/', '', $exception->getMessage()) ?? $exception->getMessage();
 
         return trim($message) === '' ? (string) __('db-console::guard.failed') : trim($message);
-    }
-
-    private function rollBackQuietly(DatabaseConnection $db): void
-    {
-        try {
-            $db->rollBack();
-        } catch (Throwable) {
-            // The transaction may already be aborted (e.g. after a statement error).
-        }
     }
 }

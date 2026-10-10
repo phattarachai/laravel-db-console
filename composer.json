@@ -1,12 +1,14 @@
 {
     "name": "phattarachai/laravel-db-console",
-    "description": "An in-app web DB client for Laravel — browse tables and run guarded SQL, without Adminer.",
+    "description": "An in-app web DB client for Laravel — browse PostgreSQL, MySQL and MariaDB tables and run guarded SQL, without Adminer.",
     "keywords": [
         "laravel",
         "database",
         "console",
         "adminer",
         "postgres",
+        "mysql",
+        "mariadb",
         "inertia"
     ],
     "license": "MIT",
@@ -27,7 +29,7 @@
         "larastan/larastan": "^3.10",
         "laravel/pint": "^1.24",
         "orchestra/testbench": "^10.8|^11.0",
-        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {

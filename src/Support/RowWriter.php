@@ -9,7 +9,6 @@ use Illuminate\Database\Query\Builder;
 use PDO;
 use PDOException;
 use Phattarachai\DbConsole\Exceptions\SqlGuardException;
-use Throwable;
 
 /**
  * Single-row edits from the grid — create, update, delete — on a writable
@@ -35,42 +34,32 @@ final readonly class RowWriter
      */
     public function apply(string $schema, string $table, string $action, array $pk, array $values): array
     {
-        $this->assertWritable($schema, $table, $action, $pk, $values);
+        $primaryKey = $this->assertWritable($schema, $table, $action, $pk, $values);
 
         $db = $this->connection->db();
         $qualified = $this->qualified($schema, $table);
         [$sql, $bindings] = $this->compile($db, $qualified, $action, $pk, $values);
 
-        $db->beginTransaction();
-
         try {
-            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
+            return $this->connection->dialect()->write($db, $this->connection->timeout, function () use ($db, $qualified, $action, $pk, $values, $primaryKey, $sql, $bindings): array {
+                [$affected, $row] = match ($action) {
+                    'create' => $this->insert($db, $qualified, $values, $primaryKey),
+                    'update' => $this->change($db, $qualified, $pk, $values),
+                    default => $this->remove($db, $qualified, $pk),
+                };
 
-            [$affected, $row] = match ($action) {
-                'create' => $this->insert($db, $qualified, $values),
-                'update' => $this->change($db, $qualified, $pk, $values),
-                default => $this->remove($db, $qualified, $pk),
-            };
+                if ($action !== 'create' && $affected !== 1) {
+                    throw new SqlGuardException(__('db-console::guard.affected_not_one', ['count' => $affected]));
+                }
 
-            if ($action !== 'create' && $affected !== 1) {
-                throw new SqlGuardException(__('db-console::guard.affected_not_one', ['count' => $affected]));
-            }
-
-            $db->commit();
-
-            return [
-                'sql' => $this->interpolate($db, $sql, $bindings),
-                'affected' => $affected,
-                'row' => $row === null ? null : $this->connection->redactor()->maskRow($row),
-            ];
+                return [
+                    'sql' => $this->interpolate($db, $sql, $bindings),
+                    'affected' => $affected,
+                    'row' => $row === null ? null : $this->connection->redactor()->maskRow(RowValues::normalize($row)),
+                ];
+            });
         } catch (PDOException $exception) {
-            $this->rollBackQuietly($db);
-
             throw new SqlGuardException($this->cleanMessage($exception), (int) $exception->getCode(), previous: $exception);
-        } catch (Throwable $throwable) {
-            $this->rollBackQuietly($db);
-
-            throw $throwable;
         }
     }
 
@@ -94,8 +83,9 @@ final readonly class RowWriter
     /**
      * @param  array<string, mixed>  $pk
      * @param  array<string, mixed>  $values
+     * @return list<string> the table's primary key columns
      */
-    private function assertWritable(string $schema, string $table, string $action, array $pk, array $values): void
+    private function assertWritable(string $schema, string $table, string $action, array $pk, array $values): array
     {
         if (! $this->connection->isWritable()) {
             throw new SqlGuardException(__('db-console::guard.read_only_row'));
@@ -131,20 +121,39 @@ final readonly class RowWriter
                 throw new SqlGuardException(__('db-console::guard.masked_column', ['column' => $column]));
             }
         }
+
+        return $definition['primaryKey'];
     }
 
     /**
+     * Postgres hands the stored row back with `RETURNING *`. MySQL has no
+     * RETURNING, so the row is read back by its primary key: the submitted
+     * values when they include it, otherwise the auto-increment id.
+     *
      * @param  array<string, mixed>  $values
+     * @param  list<string>  $primaryKey
      * @return array{0: int, 1: array<string, mixed>|null}
      */
-    private function insert(DatabaseConnection $db, string $qualified, array $values): array
+    private function insert(DatabaseConnection $db, string $qualified, array $values, array $primaryKey): array
     {
-        $rows = $db->selectFromWriteConnection(
-            $this->insertSql($db->table($qualified), $values),
-            array_values($values),
-        );
+        if ($this->connection->dialect()->supportsReturning()) {
+            $rows = $db->selectFromWriteConnection(
+                $this->insertSql($db->table($qualified), $values),
+                array_values($values),
+            );
 
-        return [count($rows), $this->firstRow($rows)];
+            return [count($rows), $this->firstRow($rows)];
+        }
+
+        $db->table($qualified)->insert($values);
+
+        $lookup = array_intersect_key($values, array_flip($primaryKey));
+
+        if (count($lookup) !== count($primaryKey) && count($primaryKey) === 1) {
+            $lookup = [$primaryKey[0] => $db->getPdo()->lastInsertId()];
+        }
+
+        return [1, $this->firstRow($db->table($qualified)->useWritePdo()->where($lookup)->limit(1)->get()->all())];
     }
 
     /**
@@ -155,6 +164,12 @@ final readonly class RowWriter
     private function change(DatabaseConnection $db, string $qualified, array $pk, array $values): array
     {
         $affected = $values === [] ? 0 : $db->table($qualified)->where($pk)->update($values);
+
+        // MySQL counts rows *changed*, not matched: saving a value equal to the
+        // stored one reports 0. Count the match instead so that isn't an error.
+        if ($affected === 0 && $values !== [] && ! $this->connection->dialect()->supportsReturning()) {
+            $affected = $db->table($qualified)->useWritePdo()->where($pk)->count();
+        }
 
         if ($affected !== 1) {
             return [$affected, null];
@@ -204,16 +219,16 @@ final readonly class RowWriter
     }
 
     /**
-     * `returning *` hands back the stored row — defaults and triggers included —
-     * without a second round trip.
+     * On Postgres, `returning *` hands back the stored row — defaults and
+     * triggers included — without a second round trip.
      *
      * @param  array<string, mixed>  $values
      */
     private function insertSql(Builder $query, array $values): string
     {
-        $grammar = $query->getGrammar();
+        $sql = $query->getGrammar()->compileInsert($query, $values === [] ? [] : [$values]);
 
-        return $grammar->compileInsert($query, $values === [] ? [] : [$values]).' returning *';
+        return $this->connection->dialect()->supportsReturning() ? $sql.' returning *' : $sql;
     }
 
     /**
@@ -276,14 +291,5 @@ final readonly class RowWriter
         $message = preg_replace('/^SQLSTATE\[[^\]]+\]:?\s*/', '', $exception->getMessage()) ?? $exception->getMessage();
 
         return trim($message) === '' ? (string) __('db-console::guard.failed') : trim($message);
-    }
-
-    private function rollBackQuietly(DatabaseConnection $db): void
-    {
-        try {
-            $db->rollBack();
-        } catch (Throwable) {
-            // The transaction may already be aborted (e.g. after a statement error).
-        }
     }
 }

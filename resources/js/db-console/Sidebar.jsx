@@ -173,7 +173,17 @@ export function Sidebar({
                           {table.type === 'view' && (
                             <span className="dc-side-view-badge">{t('sidebar.viewBadge')}</span>
                           )}
-                          <span className="dc-side-table-count">
+                          {/* Planner estimates (pg_class / information_schema), not counts. */}
+                          <span
+                            className="dc-side-table-count"
+                            title={
+                              table.type === 'view'
+                                ? undefined
+                                : t('sidebar.rowEstimate', {
+                                    rows: Number(table.rowCount ?? 0).toLocaleString(),
+                                  })
+                            }
+                          >
                             {compactCount(table.rowCount)}
                           </span>
                         </button>

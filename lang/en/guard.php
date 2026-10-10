@@ -10,6 +10,9 @@ return [
     'blocked' => ':keyword is blocked — never allowed on any connection.',
     'read_only' => ':keyword needs a writable connection; this one is read-only.',
     'unsupported' => ':keyword is not supported.',
+    'select_into' => ':keyword … INTO is blocked — a read cannot write a table, a file or a variable.',
+    'blocked_function' => ':function() is blocked — it acts outside the transaction.',
+    'open_transaction' => 'The connection is already inside a transaction, so this read cannot be made read-only.',
     'failed' => 'The statement could not be run.',
 
     'hidden_table' => 'The table :table is hidden.',
