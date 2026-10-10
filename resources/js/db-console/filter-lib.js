@@ -1,20 +1,17 @@
 /**
- * The filter builder's brains: given a column's Postgres type, which operators
+ * The filter builder's brains: given a column's type (Postgres or MySQL), which operators
  * make sense and what input each one needs. Kept UX-only and self-contained —
  * the server (see `RowReader`) independently whitelists the column and operator,
  * so nothing here is a security boundary.
  */
 
-import { isNumericType } from './lib'
+import { isBooleanType, isNumericType } from './lib'
+
+export { isBooleanType }
 
 /** A column holds a date/time → offer range + comparison operators, a date input. */
 export function isDateType(type) {
   return /date|time|timestamp/i.test(type ?? '')
-}
-
-/** A column holds a boolean → offer is-true / is-false. */
-export function isBooleanType(type) {
-  return /bool/i.test(type ?? '')
 }
 
 /** A column holds json/jsonb → only null checks make sense without a path syntax. */

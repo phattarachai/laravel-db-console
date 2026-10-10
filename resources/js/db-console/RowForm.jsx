@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { AlertIcon, KeyIcon, LockIcon } from './icons'
-import { cx, isNumericType } from './lib'
+import { cx, isBooleanType, isNumericType } from './lib'
 import { useStrings } from './strings'
 
 /** What the server sends instead of a masked column's value (`Redactor::MASK`). */
@@ -317,7 +317,7 @@ function fieldKind(type) {
   if (name.includes('json')) {
     return 'json'
   }
-  if (name.startsWith('bool')) {
+  if (isBooleanType(name)) {
     return 'boolean'
   }
   if (name.includes('timestamp') || name.includes('datetime')) {
@@ -379,8 +379,14 @@ function seedFields(columns, row, mode) {
   return fields
 }
 
-/** `2026-07-30 09:15:00` → `2026-07-30T09:15:00`, so `datetime-local` accepts it. */
+/**
+ * `2026-07-30 09:15:00` → `2026-07-30T09:15:00`, so `datetime-local` accepts it;
+ * MySQL's `1`/`0` for a `tinyint(1)` → `true`/`false`, so the select shows it.
+ */
 function normalize(kind, text) {
+  if (kind === 'boolean') {
+    return text === '1' ? 'true' : text === '0' ? 'false' : text
+  }
   if (kind !== 'datetime') {
     return text
   }

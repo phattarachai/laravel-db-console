@@ -31,7 +31,7 @@ function dcRows(array $body): TestResponse
 {
     return actingAs(dcUser())->postJson(route('db-console.rows'), [
         'table' => 'dc_owners',
-        'schema' => 'public',
+        'schema' => dcSchema(),
         ...$body,
     ]);
 }
@@ -153,13 +153,13 @@ it('refuses an unknown operator', function (): void {
 
 it('refuses a hidden table', function (): void {
     actingAs(dcUser())
-        ->postJson(route('db-console.rows'), ['table' => 'dc_hidden', 'schema' => 'public'])
+        ->postJson(route('db-console.rows'), ['table' => 'dc_hidden', 'schema' => dcSchema()])
         ->assertStatus(422);
 });
 
 it('refuses a schema the connection cannot browse', function (): void {
     actingAs(dcUser())
-        ->postJson(route('db-console.rows'), ['table' => 'pg_class', 'schema' => 'pg_catalog'])
+        ->postJson(route('db-console.rows'), ['table' => dcForeignTable()[1], 'schema' => dcForeignTable()[0]])
         ->assertStatus(422);
 });
 
@@ -172,4 +172,16 @@ it('requires a table name', function (): void {
 it('is behind the gate like every other endpoint', function (): void {
     $this->postJson(route('db-console.rows'), ['table' => 'dc_owners'])
         ->assertStatus(403);
+});
+
+it('sends a binary value as a marker rather than raw bytes', function (): void {
+    DB::table('dc_items')->insert([
+        'name' => 'dc-binary-probe',
+        'fingerprint' => DB::raw(dcIsMySql() ? "UNHEX('FFFE0081')" : "decode('fffe0081', 'hex')"),
+    ]);
+
+    actingAs(dcUser())
+        ->postJson(route('db-console.rows'), ['schema' => dcSchema(), 'table' => 'dc_items'])
+        ->assertOk()
+        ->assertJsonPath('rows.0.fingerprint', '[binary]');
 });

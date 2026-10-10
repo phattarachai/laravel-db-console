@@ -50,6 +50,14 @@ function ModeChip({ mode }) {
   )
 }
 
+/**
+ * What the pill calls the connection: the configured `label` (the server falls
+ * back to the database name when there is none), then the database, then the key.
+ */
+function pillName(connection) {
+  return connection.label || connection.database || connection.key
+}
+
 /** The non-interactive pill: what the single-connection console has always shown. */
 function ConnectionPill({ connection }) {
   const t = useStrings()
@@ -57,9 +65,7 @@ function ConnectionPill({ connection }) {
   return (
     <div className={PILL} title={connection.mode === 'write' ? undefined : t('toolbar.modeRead')}>
       <DatabaseIcon className="dc-conn-dbicon" />
-      <span className="dc-conn-name">
-        {connection.database ?? connection.label ?? connection.key}
-      </span>
+      <span className="dc-conn-name">{pillName(connection)}</span>
       {connection.driver && <span className="dc-conn-driver">· {connection.driver}</span>}
       <ReadLock mode={connection.mode} />
     </div>
@@ -129,9 +135,7 @@ export function ConnectionPicker({ connections, connection, indexEndpoint }) {
         className={cx(PILL, 'dc-conn-trigger')}
       >
         <DatabaseIcon className="dc-conn-dbicon" />
-        <span className="dc-conn-name">
-          {connection?.database ?? connection?.label ?? connection?.key ?? '—'}
-        </span>
+        <span className="dc-conn-name">{connection ? pillName(connection) : '—'}</span>
         {connection?.driver && <span className="dc-conn-driver">· {connection.driver}</span>}
         <ReadLock mode={connection?.mode} />
         <ChevronIcon className={cx('dc-conn-chevron', open && 'on')} />
@@ -155,7 +159,9 @@ export function ConnectionPicker({ connections, connection, indexEndpoint }) {
                 className={cx('dc-conn-option', broken && 'broken', active && 'on')}
               >
                 <span className="dc-conn-label">{item.label || item.key}</span>
-                {item.database && <span className="dc-conn-db">{item.database}</span>}
+                {item.database && item.database !== item.label && (
+                  <span className="dc-conn-db">{item.database}</span>
+                )}
                 {broken ? (
                   <AlertIcon className="dc-conn-alert" />
                 ) : (

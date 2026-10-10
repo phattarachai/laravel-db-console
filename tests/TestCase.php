@@ -12,8 +12,11 @@ use Phattarachai\DbConsole\DbConsole;
 use Phattarachai\DbConsole\DbConsoleServiceProvider;
 use Phattarachai\DbConsole\Tests\Fixtures\DcUser;
 
+use function Orchestra\Testbench\load_migration_paths;
+
 /**
- * A minimal Laravel host for the console: Postgres, an authenticatable, a
+ * A minimal Laravel host for the console: a real database (Postgres by default,
+ * MySQL or MariaDB with `DB_CONNECTION=mysql|mariadb`), an authenticatable, a
  * `login` route to be redirected to, and an Inertia root view. Everything the
  * package assumes of its host and nothing more.
  */
@@ -52,7 +55,9 @@ abstract class TestCase extends Orchestra
     {
         $config = $app['config'];
 
-        $config->set('database.default', 'pgsql');
+        $driver = dcDriver();
+
+        $config->set('database.default', $driver);
         $config->set('database.connections.pgsql', [
             'driver' => 'pgsql',
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -64,6 +69,22 @@ abstract class TestCase extends Orchestra
             'search_path' => 'public',
             'sslmode' => 'prefer',
         ]);
+
+        foreach (['mysql', 'mariadb'] as $mysql) {
+            $config->set("database.connections.{$mysql}", [
+                'driver' => $mysql,
+                'host' => env('DB_HOST', '127.0.0.1'),
+                'port' => env('DB_PORT', '3306'),
+                'database' => env('DB_DATABASE', 'db_console_testing'),
+                'username' => env('DB_USERNAME', 'root'),
+                'password' => env('DB_PASSWORD', ''),
+                'charset' => 'utf8mb4',
+                'collation' => 'utf8mb4_unicode_ci',
+                'prefix' => '',
+                'strict' => true,
+                'engine' => 'InnoDB',
+            ]);
+        }
 
         $config->set('auth.providers.users.model', DcUser::class);
         // The published page ships with the package, so `assertInertia`'s
@@ -89,9 +110,19 @@ abstract class TestCase extends Orchestra
         Route::get('/login', fn (): string => 'login')->name('login');
     }
 
+    /**
+     * Postgres: testbench runs these inside RefreshDatabase. MySQL: they join the
+     * `migrate:fresh` DatabaseTruncation runs once, and truncation cleans up.
+     */
     #[Override]
     protected function defineDatabaseMigrations(): void
     {
+        if (dcIsMySql()) {
+            load_migration_paths($this->app, __DIR__.'/database/migrations');
+
+            return;
+        }
+
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
     }
 }

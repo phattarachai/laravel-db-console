@@ -13,20 +13,28 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # One real database per job — the console's guarantees are engine-level
+    # (READ ONLY transactions, statement timeouts, catalog introspection), so
+    # an SQLite stand-in would prove nothing. Each image ignores the other
+    # engines' env vars.
     services:
-      postgres:
-        image: postgres:17
+      database:
+        image: ${{ matrix.db.image }}
         env:
           POSTGRES_DB: db_console_testing
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          MYSQL_DATABASE: db_console_testing
+          MYSQL_ROOT_PASSWORD: root
+          MARIADB_DATABASE: db_console_testing
+          MARIADB_ROOT_PASSWORD: root
         ports:
-          - 5432:5432
+          - ${{ matrix.db.port }}:${{ matrix.db.port }}
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "${{ matrix.db.health }}"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     strategy:
       fail-fast: false
@@ -34,13 +42,17 @@ jobs:
         php: ['8.4']
         laravel: ['12.*', '13.*']
         stability: [prefer-lowest, prefer-stable]
+        db:
+          - { name: pgsql, image: 'postgres:17', port: 5432, user: postgres, password: postgres, health: 'pg_isready' }
+          - { name: mysql, image: 'mysql:8.4', port: 3306, user: root, password: root, health: 'mysqladmin ping -h 127.0.0.1 -proot' }
+          - { name: mariadb, image: 'mariadb:11.4', port: 3306, user: root, password: root, health: 'healthcheck.sh --connect --innodb_initialized' }
         include:
           - laravel: '12.*'
             testbench: '^10.8'
           - laravel: '13.*'
             testbench: '^11.0'
 
-    name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }}
+    name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.db.name }} - ${{ matrix.stability }}
 
     steps:
       - name: Checkout
@@ -50,7 +62,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, fileinfo
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, fileinfo, pdo_pgsql, pdo_mysql
           coverage: none
 
       - name: Install dependencies
@@ -60,3 +72,10 @@ jobs:
 
       - name: Run tests
         run: vendor/bin/pest
+        env:
+          DB_CONNECTION: ${{ matrix.db.name }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ matrix.db.port }}
+          DB_DATABASE: db_console_testing
+          DB_USERNAME: ${{ matrix.db.user }}
+          DB_PASSWORD: ${{ matrix.db.password }}

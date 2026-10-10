@@ -7,6 +7,7 @@ namespace Phattarachai\DbConsole\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Phattarachai\DbConsole\DbConsole;
 use Phattarachai\DbConsole\Exceptions\UnsupportedDriverException;
 use Phattarachai\DbConsole\Support\Connection;
 use Throwable;
@@ -48,13 +49,11 @@ final class DoctorCommand extends Command
                 : 'Run `php artisan migrate` — missing: '.implode(', ', $missing).'.';
         });
 
-        $failures += $this->check('Inertia page published', fn (): ?string => file_exists(resource_path('js/pages/DbConsole.jsx'))
-            ? null
-            : 'Run `php artisan vendor:publish --tag=db-console-inertia`.');
+        $failures += $this->check('Inertia page published', fn (): ?string => $this->page());
 
-        $failures += $this->check('Vite alias @db-console', fn (): ?string => $this->fileContains(base_path('vite.config.js'), '@db-console')
+        $failures += $this->check('Vite alias @db-console', fn (): ?string => $this->viteConfig() !== null && $this->fileContains($this->viteConfig(), '@db-console')
             ? null
-            : 'Add a resolve.alias entry for @db-console — see the package README.');
+            : 'Add a resolve.alias entry for @db-console to '.($this->viteConfig() === null ? 'vite.config.js' : basename($this->viteConfig())).' — see the package README.');
 
         $this->newLine();
 
@@ -102,6 +101,46 @@ final class DoctorCommand extends Command
         } catch (UnsupportedDriverException $exception) {
             return $exception->getMessage();
         }
+    }
+
+    /**
+     * The page must exist with the extension the host's root view asks Vite
+     * for, be the current version (SSR-safe, opted out of the host's default
+     * layout), and match the host's language.
+     */
+    private function page(): ?string
+    {
+        $path = DbConsole::pagePath();
+        $publish = 'Run `php artisan vendor:publish --tag=db-console-inertia --force`.';
+        $other = resource_path('js/pages/DbConsole.'.(DbConsole::usesTypeScript() ? 'jsx' : 'tsx'));
+
+        if (! file_exists($path)) {
+            return file_exists($other)
+                ? 'Found '.basename($other).', but this app\'s pages are '.pathinfo($path, PATHINFO_EXTENSION).' — delete it, then: '.$publish
+                : $publish;
+        }
+
+        if (! $this->fileContains($path, 'typeof document') || ! $this->fileContains($path, '.layout')) {
+            return basename($path).' is from an older release (it breaks under SSR or inside a default layout). '.$publish;
+        }
+
+        if (DbConsole::usesTypeScript() && ! file_exists(resource_path('js/types/db-console.d.ts'))) {
+            return 'resources/js/types/db-console.d.ts is missing, so `tsc` cannot resolve @db-console. '.$publish;
+        }
+
+        return null;
+    }
+
+    /** `vite.config.ts` (the React starter kit), `.js`, or the `.mjs`/`.mts` variants. */
+    private function viteConfig(): ?string
+    {
+        foreach (['ts', 'js', 'mts', 'mjs'] as $extension) {
+            if (file_exists($path = base_path("vite.config.{$extension}"))) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     private function fileContains(string $path, string $needle): bool

@@ -8,9 +8,13 @@ use Illuminate\Database\Schema\Builder;
 use Phattarachai\DbConsole\Exceptions\SqlGuardException;
 
 /**
- * Live Postgres introspection for the Database Console — builds the payload the
- * schema tree and grid consume, with hidden tables dropped and masked columns
- * replaced before anything leaves the server.
+ * Live introspection for the Database Console — builds the payload the schema
+ * tree and grid consume, with hidden tables dropped and masked columns replaced
+ * before anything leaves the server.
+ *
+ * Columns, indexes and foreign keys come from Laravel's schema builder, which
+ * reads `pg_catalog` or `information_schema` as the driver needs. Row estimates
+ * and an object's kind come from the connection's dialect.
  *
  * @phpstan-type DcColumn array{name: string, type: string, nullable: bool, pk: bool, fk: string|null, default: string|null, masked: bool}
  * @phpstan-type DcIndex array{name: string, type: string, columns: list<string>}
@@ -87,8 +91,8 @@ final readonly class SchemaInspector
      */
     private function treeObjects(string $schema): array
     {
-        $tables = array_column($this->inSchema($this->schema()->getTables(), $schema), 'name');
-        $views = array_column($this->inSchema($this->schema()->getViews(), $schema), 'name');
+        $tables = array_column($this->inSchema($this->schema()->getTables($schema), $schema), 'name');
+        $views = array_column($this->inSchema($this->schema()->getViews($schema), $schema), 'name');
 
         $counts = $this->rowCounts($schema, $tables, $views);
 
@@ -107,7 +111,8 @@ final readonly class SchemaInspector
      * no estimate for (never analysed, or genuinely empty).
      *
      * Views keep the old behaviour of reporting 0 rather than being counted — a
-     * view's count is the cost of running it.
+     * view's count is the cost of running it. Postgres reports -1 for a relation
+     * never analysed and MySQL NULL for a view; both floor to 0 here.
      *
      * @param  list<string>  $tables
      * @param  list<string>  $views
@@ -115,7 +120,7 @@ final readonly class SchemaInspector
      */
     private function rowCounts(string $schema, array $tables, array $views): array
     {
-        $estimates = $this->estimates($schema);
+        $estimates = $this->connection->dialect()->estimates($this->connection->db(), $schema);
 
         $counts = [];
         $uncounted = [];
@@ -132,31 +137,6 @@ final readonly class SchemaInspector
     }
 
     /**
-     * Every relation's planner row estimate, in one catalog query. Postgres 14+
-     * reports -1 for a relation that has never been analysed.
-     *
-     * @return array<string, int>
-     */
-    private function estimates(string $schema): array
-    {
-        $rows = $this->connection->db()->select(
-            'SELECT c.relname AS name, c.reltuples::bigint AS estimate
-               FROM pg_class c
-               JOIN pg_namespace n ON n.oid = c.relnamespace
-              WHERE n.nspname = ?',
-            [$schema],
-        );
-
-        $estimates = [];
-
-        foreach ($rows as $row) {
-            $estimates[(string) $row->name] = (int) $row->estimate;
-        }
-
-        return $estimates;
-    }
-
-    /**
      * @param  list<string>  $names
      * @return array<string, int>
      */
@@ -166,7 +146,7 @@ final readonly class SchemaInspector
 
         foreach (array_chunk($names, self::COUNT_BATCH) as $chunk) {
             $selects = array_map(
-                fn (string $name): string => 'SELECT ? AS name, count(*) AS total FROM '.$this->quoteQualified($schema, $name),
+                fn (string $name): string => 'SELECT ? AS name, count(*) AS total FROM '.$this->connection->dialect()->quoteQualified($schema, $name),
                 $chunk,
             );
 
@@ -184,18 +164,8 @@ final readonly class SchemaInspector
      */
     private function kindOf(string $schema, string $name): string
     {
-        $kind = $this->connection->db()->selectOne(
-            'SELECT c.relkind FROM pg_class c
-               JOIN pg_namespace n ON n.oid = c.relnamespace
-              WHERE n.nspname = ? AND c.relname = ?',
-            [$schema, $name],
-        )?->relkind;
-
-        if ($kind === null) {
-            throw new SqlGuardException((string) __('db-console::guard.unknown_table', ['table' => $name]));
-        }
-
-        return in_array($kind, ['v', 'm'], strict: true) ? 'view' : 'table';
+        return $this->connection->dialect()->kindOf($this->connection->db(), $schema, $name)
+            ?? throw new SqlGuardException((string) __('db-console::guard.unknown_table', ['table' => $name]));
     }
 
     /**
@@ -282,7 +252,7 @@ final readonly class SchemaInspector
         return match (true) {
             (bool) $index['primary'] => 'PRIMARY',
             (bool) $index['unique'] => 'UNIQUE',
-            $index['type'] === 'gin' => 'GIN',
+            in_array($index['type'], ['gin', 'gist', 'fulltext', 'spatial'], strict: true) => strtoupper($index['type']),
             default => 'INDEX',
         };
     }
@@ -330,8 +300,7 @@ final readonly class SchemaInspector
 
     private function rowCount(string $schema, string $table, string $type): int
     {
-        $estimate = (int) ($this->connection->db()->selectOne('SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass(?)',
-            ["{$schema}.{$table}"])?->estimate ?? 0);
+        $estimate = $this->connection->dialect()->rowEstimate($this->connection->db(), $schema, $table);
 
         return match (true) {
             $estimate > 0 => $estimate,
@@ -346,39 +315,20 @@ final readonly class SchemaInspector
     private function sampleRows(string $schema, string $table): array
     {
         $rows = $this->connection->db()->table($this->qualify($schema, $table))->limit($this->connection->sampleRows)->get()
-            ->map(fn (object $row): array => $this->normalizeRow((array) $row))
+            ->map(fn (object $row): array => RowValues::normalize((array) $row))
             ->all();
 
         return $this->redactor->maskRows($rows);
     }
 
     /**
-     * @param  array<string, mixed>  $row
-     * @return array<string, mixed>
-     */
-    private function normalizeRow(array $row): array
-    {
-        return array_map(fn (mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
-    }
-
-    /**
-     * The `public` schema stays unqualified, so its queries are byte-for-byte
-     * what they were before multi-schema support.
+     * The default schema (`public`, or the connection's own database) stays
+     * unqualified, so its queries are byte-for-byte what they were before
+     * multi-schema support.
      */
     private function qualify(string $schema, string $table): string
     {
-        return $schema === 'public' ? $table : "{$schema}.{$table}";
-    }
-
-    /**
-     * Identifier-quoted `"schema"."table"`, for the one place a statement is
-     * assembled as a string instead of through the query builder.
-     */
-    private function quoteQualified(string $schema, string $table): string
-    {
-        $quote = fn (string $identifier): string => '"'.str_replace('"', '""', $identifier).'"';
-
-        return $quote($schema).'.'.$quote($table);
+        return $schema === $this->connection->dialect()->defaultSchema($this->connection->db()) ? $table : "{$schema}.{$table}";
     }
 
     private function schema(): Builder

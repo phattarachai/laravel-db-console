@@ -59,12 +59,24 @@ return [
     |                 which always asks: it is irreversible and a single click.
     |                 true — every write needs the confirmation handshake first.
     |
+    | label    shown in the toolbar pill and the connection menu; null shows
+    |          the database name.
+    |
+    | schemas  the browsable whitelist. null means the driver's default:
+    |          `public` on PostgreSQL, the connection's own database on MySQL
+    |          and MariaDB (where a schema *is* a database). On MySQL a listed
+    |          'public' also means the connection's database.
+    |
+    | timeout  milliseconds. PostgreSQL bounds every statement; MariaDB too
+    |          (max_statement_time). MySQL bounds SELECTs (max_execution_time)
+    |          and only the lock waits of a write (innodb_lock_wait_timeout).
+    |
     */
 
     'defaults' => [
         'mode' => 'read',
         'label' => null,
-        'schemas' => ['public'],
+        'schemas' => null,
         'max_rows' => 5000,
         'timeout' => 5000,
         'sample_rows' => 100,
@@ -80,7 +92,8 @@ return [
     | "default" resolves to config('database.default'). Only the connections
     | listed here are reachable — adding one to database.php does not expose it.
     |
-    | PostgreSQL only: any other driver fails loudly with a readable message.
+    | PostgreSQL, MySQL 8 and MariaDB. Any other driver fails loudly with a
+    | readable message.
     |
     */
 

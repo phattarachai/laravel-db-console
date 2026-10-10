@@ -8,7 +8,6 @@ use Illuminate\Database\Connection as DatabaseConnection;
 use Illuminate\Database\Query\Builder;
 use PDOException;
 use Phattarachai\DbConsole\Exceptions\SqlGuardException;
-use Throwable;
 
 /**
  * Server-side reads for the grid: a filtered, sorted, paginated slice of one
@@ -18,8 +17,12 @@ use Throwable;
  * column is whitelisted against the table's real, non-masked columns and the
  * operator against a fixed set — so nothing the browser sends reaches SQL as
  * text. The query runs inside the same always-rolled-back READ ONLY transaction
- * as {@see SqlRunner}, so Postgres itself refuses a write even if one slipped
+ * as {@see SqlRunner}, so the engine itself refuses a write even if one slipped
  * through the builder.
+ *
+ * Text matching is `ILIKE` on Postgres and `LIKE` on MySQL/MariaDB, where case
+ * (and accent) sensitivity follows the column's collation — insensitive under
+ * the default `utf8mb4_0900_ai_ci`, sensitive under a `_bin` or `_cs` one.
  *
  * Pagination is "one more than asked": the reader fetches `perPage + 1` rows and
  * reports `hasMore`, never counting the whole table — so a filter over a
@@ -61,7 +64,7 @@ final readonly class RowReader
         $columns = $this->filterableColumns($definition['columns']);
 
         $db = $this->connection->db();
-        $query = $db->table($this->qualify($schema, $table));
+        $query = $db->table($this->qualify($db, $schema, $table));
 
         $this->applyFilters($query, $columns, $filters);
         $this->applySearch($query, $columns, $search);
@@ -135,9 +138,9 @@ final readonly class RowReader
             'lte' => $query->where($column, '<=', $value),
             'gt' => $query->where($column, '>', $value),
             'gte' => $query->where($column, '>=', $value),
-            'contains' => $query->where($column, 'ilike', '%'.$this->escapeLike((string) $value).'%'),
-            'starts' => $query->where($column, 'ilike', $this->escapeLike((string) $value).'%'),
-            'ends' => $query->where($column, 'ilike', '%'.$this->escapeLike((string) $value)),
+            'contains' => $this->whereLike($query, $column, '%'.$this->escapeLike((string) $value).'%'),
+            'starts' => $this->whereLike($query, $column, $this->escapeLike((string) $value).'%'),
+            'ends' => $this->whereLike($query, $column, '%'.$this->escapeLike((string) $value)),
             default => throw $this->unreachable($operator),
         };
     }
@@ -198,9 +201,22 @@ final readonly class RowReader
 
         $query->where(function (Builder $inner) use ($textColumns, $like): void {
             foreach ($textColumns as $column) {
-                $inner->orWhere($column, 'ilike', $like);
+                $this->whereLike($inner, $column, $like, 'or');
             }
         });
+    }
+
+    /**
+     * A case-insensitive pattern match with an explicit `ESCAPE '!'`. Both
+     * engines default to a backslash escape, but MySQL drops it under
+     * `NO_BACKSLASH_ESCAPES`, so the escape character is spelled out. The column
+     * is whitelisted and wrapped by the grammar; the pattern is a binding.
+     */
+    private function whereLike(Builder $query, string $column, string $pattern, string $boolean = 'and'): void
+    {
+        $match = $this->connection->dialect()->caseInsensitiveMatch($query->getGrammar()->wrap($column));
+
+        $query->whereRaw("{$match} ? escape '!'", [$pattern], $boolean);
     }
 
     /**
@@ -233,26 +249,20 @@ final readonly class RowReader
 
         $query->offset(($page - 1) * $perPage)->limit($perPage + 1);
 
-        $db->beginTransaction();
-
         try {
-            $db->statement('SET TRANSACTION READ ONLY');
-            $db->statement('SET LOCAL statement_timeout = '.$this->connection->timeout);
+            return $this->connection->dialect()->read($db, $this->connection->timeout, function () use ($query, $page, $perPage, $startedAt): array {
+                $rows = $query->get()->map(fn (object $row): array => RowValues::normalize((array) $row))->all();
 
-            $rows = $query->get()->map(fn (object $row): array => $this->normalizeRow((array) $row))->all();
-            $hasMore = count($rows) > $perPage;
-
-            return [
-                'rows' => $this->connection->redactor()->maskRows(array_slice($rows, 0, $perPage)),
-                'page' => $page,
-                'perPage' => $perPage,
-                'hasMore' => $hasMore,
-                'elapsedMs' => $this->elapsedSince($startedAt),
-            ];
+                return [
+                    'rows' => $this->connection->redactor()->maskRows(array_slice($rows, 0, $perPage)),
+                    'page' => $page,
+                    'perPage' => $perPage,
+                    'hasMore' => count($rows) > $perPage,
+                    'elapsedMs' => $this->elapsedSince($startedAt),
+                ];
+            });
         } catch (PDOException $exception) {
             throw new SqlGuardException($this->cleanMessage($exception), (int) $exception->getCode(), previous: $exception);
-        } finally {
-            $this->rollBackQuietly($db);
         }
     }
 
@@ -317,15 +327,15 @@ final readonly class RowReader
         return [$pair[0], $pair[1]];
     }
 
-    /** Neutralise LIKE wildcards so a typed `%` or `_` matches literally. */
+    /** Neutralise LIKE wildcards so a typed `%` or `_` matches literally — `!` is the escape. */
     private function escapeLike(string $value): string
     {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 
     private function isTextType(string $type): bool
     {
-        return (bool) preg_match('/char|text|uuid|citext|name/i', $type);
+        return (bool) preg_match('/char|text|uuid|citext|name|enum/i', $type);
     }
 
     private function clampPerPage(int $perPage): int
@@ -334,21 +344,12 @@ final readonly class RowReader
     }
 
     /**
-     * @param  array<string, mixed>  $row
-     * @return array<string, mixed>
-     */
-    private function normalizeRow(array $row): array
-    {
-        return array_map(fn (mixed $value): mixed => is_resource($value) ? '[binary]' : $value, $row);
-    }
-
-    /**
-     * The `public` schema stays unqualified, so its queries are byte-for-byte
+     * The default schema stays unqualified, so its queries are byte-for-byte
      * what the rest of the console runs.
      */
-    private function qualify(string $schema, string $table): string
+    private function qualify(DatabaseConnection $db, string $schema, string $table): string
     {
-        return $schema === 'public' ? $table : "{$schema}.{$table}";
+        return $schema === $this->connection->dialect()->defaultSchema($db) ? $table : "{$schema}.{$table}";
     }
 
     private function elapsedSince(float|int $startedAt): int
@@ -362,14 +363,5 @@ final readonly class RowReader
         $message = preg_replace('/^SQLSTATE\[[^\]]+\]:?\s*/', '', $exception->getMessage()) ?? $exception->getMessage();
 
         return trim($message) === '' ? (string) __('db-console::guard.failed') : trim($message);
-    }
-
-    private function rollBackQuietly(DatabaseConnection $db): void
-    {
-        try {
-            $db->rollBack();
-        } catch (Throwable) {
-            // The transaction may already be aborted (e.g. after a statement error).
-        }
     }
 }

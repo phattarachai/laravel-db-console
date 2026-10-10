@@ -53,7 +53,7 @@ it('blocks a write that passes the keyword guard, via the read-only transaction'
     dcOwner();
     $before = DB::table('dc_owners')->max('id');
 
-    expect(fn () => new SqlRunner(Connection::resolve())->run("SELECT nextval('dc_owners_id_seq')"))
+    expect(fn () => new SqlRunner(Connection::resolve())->run(dcWriteProbeSql()))
         ->toThrow(SqlGuardException::class);
 
     expect(DB::table('dc_owners')->max('id'))->toBe($before);
@@ -78,4 +78,11 @@ it('explains a statement without executing it', function (): void {
     expect($result['kind'])->toBe('explain')
         ->and($result['plan'])->not->toBeEmpty()
         ->and(DB::table('dc_owners')->count())->toBe($before);
+
+    // Postgres's own plan text; MySQL's FORMAT=TREE; MariaDB's table, laid out.
+    expect($result['plan'][0])->toStartWith(match (dcDriver()) {
+        'mysql' => '->',
+        'mariadb' => '+-',
+        default => 'Seq Scan',
+    });
 });

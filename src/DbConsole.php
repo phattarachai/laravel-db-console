@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Gate;
  */
 final class DbConsole
 {
-    public const string VERSION = '0.1.0';
+    public const string VERSION = '1.1.0';
 
     /** @var (Closure(Request): bool)|null */
     private static ?Closure $authUsing = null;
@@ -45,6 +45,22 @@ final class DbConsole
         }
 
         return Gate::has('viewDbConsole') && Gate::allows('viewDbConsole');
+    }
+
+    /**
+     * Whether the host's frontend is TypeScript — the React starter kit is. Its
+     * root view asks Vite for `pages/{component}.tsx`, so the published page has
+     * to match the host's extension or the console answers with a 500.
+     */
+    public static function usesTypeScript(): bool
+    {
+        return file_exists(resource_path('js/app.tsx'));
+    }
+
+    /** Where the published Inertia page lives in this host. */
+    public static function pagePath(): string
+    {
+        return resource_path('js/pages/DbConsole.'.(self::usesTypeScript() ? 'tsx' : 'jsx'));
     }
 
     /** Reset the registered callback. Test seam. */

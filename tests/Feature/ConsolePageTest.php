@@ -6,7 +6,7 @@ use Phattarachai\DbConsole\Support\QueryStore;
 
 use function Pest\Laravel\actingAs;
 
-it('serves live Postgres introspection to an authorised user', function (): void {
+it('serves live introspection to an authorised user', function (): void {
     dcOwner();
 
     actingAs(dcUser())
@@ -15,13 +15,14 @@ it('serves live Postgres introspection to an authorised user', function (): void
         ->assertInertia(fn ($page) => $page
             ->component('DbConsole')
             ->has('connection', fn ($connection) => $connection
-                ->where('name', 'pgsql')
+                ->where('name', dcDriver())
+                ->where('dialect', dcDriver())
                 ->where('mode', 'read')
                 ->has('database')
                 ->has('key')
                 ->has('label')
                 ->has('confirmWrites')
-                ->where('driver', fn (string $driver): bool => str_contains($driver, 'PostgreSQL')))
+                ->where('driver', fn (string $driver): bool => str_starts_with($driver, ['pgsql' => 'PostgreSQL', 'mysql' => 'MySQL', 'mariadb' => 'MariaDB'][dcDriver()])))
             ->has('connections')
             ->has('endpoints.query')
             ->has('endpoints.explain')
@@ -31,7 +32,7 @@ it('serves live Postgres introspection to an authorised user', function (): void
             ->has('features')
             ->has('sql.saved')
             ->has('sql.history')
-            ->where('schemas.0.name', 'public')
+            ->where('schemas.0.name', dcSchema())
             ->where('schemas.0.tables', fn ($tables): bool => collect($tables)->pluck('name')->contains('dc_owners'))
             ->has('favorites')
             // The tree is names only — columns and rows arrive from the table

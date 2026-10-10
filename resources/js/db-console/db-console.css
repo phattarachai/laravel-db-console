@@ -1871,7 +1871,11 @@
   z-index: 30;
   margin-top: 0.25rem;
   max-height: 20rem;
-  width: 18rem;
+  /* As wide as the longest row needs, never narrower than the pill, and never
+     wider than the viewport — only then do the names ellipsize. */
+  width: max-content;
+  min-width: max(100%, 16rem);
+  max-width: min(36rem, calc(100vw - 1.5rem));
   overflow-y: auto;
   border-radius: 0.375rem;
   border: 1px solid var(--dc-border);
@@ -2542,9 +2546,6 @@
 .dc-root .dc-sql-notice-detail {
   margin-top: 0.125rem;
   color: var(--dc-text-muted);
-}
-.dc-root .dc-sql-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .dc-root .dc-sql-reason {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

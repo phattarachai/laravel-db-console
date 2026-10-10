@@ -29,7 +29,7 @@ import { useStrings } from './strings'
  * is kept in localStorage any more — the props are the state of record and a fresh
  * Inertia payload replaces whatever this component added optimistically.
  *
- * `classifySql(text, mode)` is the client-side mirror of the server's `SqlGuard`:
+ * `classifySql(text, mode, dialect)` is the client-side mirror of the server's `SqlGuard`:
  * it disables Run and labels the chip, but the server guard is the real gate. On a
  * `confirm_writes` connection a write answers **409** with a single-use token — a
  * normal step, never an error — which the type-to-confirm panel replays.
@@ -41,6 +41,7 @@ import { useStrings } from './strings'
  *   editorRef?: import('react').RefObject,
  *   connectionKey?: string,
  *   mode?: 'read' | 'write',
+ *   dialect?: 'pgsql' | 'mysql' | 'mariadb',
  *   confirmWrites?: boolean,
  *   features?: {explain?: boolean, share?: boolean, rowEdit?: boolean},
  *   initialSql?: string,
@@ -54,6 +55,7 @@ export function SqlConsole({
   editorRef,
   connectionKey,
   mode = 'read',
+  dialect = 'pgsql',
   confirmWrites = false,
   features,
   initialSql,
@@ -110,7 +112,7 @@ export function SqlConsole({
     return () => clearTimeout(timer)
   }, [share])
 
-  const guard = classifySql(text, mode)
+  const guard = classifySql(text, mode, dialect)
   const confirmWord = t('sql.confirmWord')
   const isEmpty = text.trim() === ''
 
@@ -127,7 +129,7 @@ export function SqlConsole({
 
   /** Run one statement; `confirmToken` replays a statement the server asked to confirm. */
   const execute = async (raw, confirmToken = null) => {
-    const check = classifySql(raw, mode)
+    const check = classifySql(raw, mode, dialect)
     setTab('result')
 
     if (!check.ok) {
@@ -180,7 +182,7 @@ export function SqlConsole({
   }
 
   const explain = async () => {
-    const check = classifySql(text, mode)
+    const check = classifySql(text, mode, dialect)
     if (!check.ok) {
       setTab('result')
       setError({ ...check, kind: 'guard' })
@@ -544,11 +546,9 @@ function ResultPanel({ result, error, running }) {
               {isGuard ? t('guard.title') : t('sql.error.title')}
             </div>
             <div className="dc-sql-notice-detail">
+              {/* The message names the keyword itself where it matters. */}
               {isGuard ? (
-                <>
-                  {error.keyword && <span className="dc-sql-mono">{error.keyword}</span>} —{' '}
-                  {t(error.messageKey, error.replacements)} {t('guard.hint')}
-                </>
+                t(error.messageKey, error.replacements)
               ) : (
                 <span className="dc-sql-reason">{error.reason}</span>
               )}

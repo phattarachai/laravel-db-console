@@ -11,9 +11,3 @@ parameters:
 			identifier: arrayValues.list
 			count: 1
 			path: src/Support/Redactor.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>estimate" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: src/Support/SchemaInspector.php

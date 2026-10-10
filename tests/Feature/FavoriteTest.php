@@ -13,7 +13,7 @@ it('stars and unstars a table', function (): void {
     actingAs($user)
         ->postJson(route('db-console.favorite'), ['table' => 'dc_items'])
         ->assertOk()
-        ->assertJsonPath('favorites', ['public.dc_items']);
+        ->assertJsonPath('favorites', [dcSchema().'.dc_items']);
 
     actingAs($user)
         ->postJson(route('db-console.favorite'), ['table' => 'dc_items'])
@@ -29,7 +29,7 @@ it('hands the current favourites to the page', function (): void {
     actingAs($user)
         ->get(route('db-console.index'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('favorites', ['public.dc_owners']));
+        ->assertInertia(fn ($page) => $page->where('favorites', [dcSchema().'.dc_owners']));
 });
 
 it('keeps favourites per connection', function (): void {
@@ -37,9 +37,9 @@ it('keeps favourites per connection', function (): void {
 
     actingAs(dcUser());
 
-    $store->toggle('default', 'public', 'dc_items');
+    $store->toggle('default', dcSchema(), 'dc_items');
 
-    expect($store->all('default'))->toBe(['public.dc_items'])
+    expect($store->all('default'))->toBe([dcSchema().'.dc_items'])
         ->and($store->all('analytic'))->toBe([]);
 });
 
@@ -47,7 +47,7 @@ it('never shows one user the favourites of another', function (): void {
     $store = app(FavoriteStore::class);
 
     actingAs(dcUser());
-    $store->toggle('default', 'public', 'dc_items');
+    $store->toggle('default', dcSchema(), 'dc_items');
 
     $other = DcUser::query()->create([
         'name' => 'Other', 'email' => 'other@example.test', 'password' => bcrypt('secret'),

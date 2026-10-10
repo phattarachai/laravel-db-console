@@ -38,6 +38,7 @@ export const DEFAULT_STRINGS = {
   'sidebar.heading': 'Tables & Views',
   'sidebar.filter': 'Filter tables…',
   'sidebar.noMatches': 'No table matches “:search”',
+  'sidebar.rowEstimate': '~:rows rows (estimated)',
   'sidebar.showColumns': 'Show columns',
   'sidebar.favorite': 'Add to favourites',
   'sidebar.unfavorite': 'Remove from favourites',
@@ -57,7 +58,7 @@ export const DEFAULT_STRINGS = {
   'grid.exportCsv': 'Export current view to CSV',
   'grid.noRows': 'No rows',
   'grid.noMatchingRows': 'No row matches the filter',
-  'grid.showingRows': 'Showing :from–:to of :total rows (sample)',
+  'grid.showingRows': 'Showing :from–:to of :total rows',
   'grid.perPage': 'Per page',
   'grid.previous': 'Previous',
   'grid.next': 'Next',
@@ -215,13 +216,14 @@ export const DEFAULT_STRINGS = {
 
   // Statement guard (sql-lib classifySql — keys mirror the server's guard lang file)
   'guard.title': 'Blocked by the guard',
-  'guard.hint': 'This console runs one statement at a time',
   'guard.empty': 'No statement to run.',
   'guard.single_statement': 'Only one statement at a time.',
   'guard.must_start': 'A statement must start with SELECT.',
   'guard.blocked': ':keyword is blocked — never allowed on any connection.',
   'guard.read_only': ':keyword needs a writable connection; this one is read-only.',
   'guard.unsupported': ':keyword is not supported.',
+  'guard.select_into': ':keyword … INTO is blocked — a read cannot write a table, a file or a variable.',
+  'guard.blocked_function': ':function() is blocked — it acts outside the transaction.',
   'guard.read': 'Read-only',
   'guard.write': ':keyword changes data on this writable connection.',
 
