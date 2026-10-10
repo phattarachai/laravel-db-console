@@ -108,5 +108,6 @@ it('finds a hidden table behind any quoting', function (string $driver, string $
 })->with([
     ['pgsql', 'SELECT * FROM "dc_hidden"'],
     ['mysql', 'SELECT * FROM `dc_hidden`'],
+    'mysql ANSI_QUOTES identifier' => ['mysql', 'SELECT * FROM "dc_hidden"'],
     ['mysql', 'SELECT 1 /*! FROM dc_hidden */'],
 ]);

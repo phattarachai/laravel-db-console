@@ -352,8 +352,10 @@ function lexSql(sql, dialect, backslashEscapes, unwrap) {
 
     if (c === "'" || (c === '"' && mysql)) {
       const escapeString = !mysql && i > 0 && /[Ee]/.test(sql[i - 1]) && !wordBefore(i - 1)
-      i = quotedEnd(i, c, mysql ? backslashEscapes : escapeString || backslashEscapes)
-      out += ' '
+      const end = quotedEnd(i, c, mysql ? backslashEscapes : escapeString || backslashEscapes)
+      // Under ANSI_QUOTES MySQL reads "…" as an identifier: unwrap it for the scans.
+      out += c === '"' && unwrap ? ` ${sql.slice(i + 1, Math.max(i + 1, end - 1))} ` : ' '
+      i = end
       continue
     }
 

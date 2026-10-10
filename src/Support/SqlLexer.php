@@ -108,8 +108,15 @@ final readonly class SqlLexer
 
             if ($char === "'" || ($char === '"' && $this->dialect === self::MYSQL)) {
                 $escapes = $this->dialect === self::MYSQL ? $backslashEscapes : ($this->isEscapeString($sql, $i) || $backslashEscapes);
-                $i = $this->quotedEnd($sql, $i, $char, $escapes);
-                $tokens[] = ['string', ''];
+                $end = $this->quotedEnd($sql, $i, $char, $escapes);
+
+                // Under ANSI_QUOTES MySQL reads "…" as an identifier, so the
+                // identifier scans see its content too. A false positive is the
+                // safe direction.
+                $tokens[] = $char === '"'
+                    ? ['ident', substr($sql, $i + 1, max(0, $end - $i - 2))]
+                    : ['string', ''];
+                $i = $end;
 
                 continue;
             }
