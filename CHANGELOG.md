@@ -7,6 +7,15 @@ Release notes are drafted automatically from merged pull requests and published 
 
 This file records anything released before that automation landed.
 
+## v1.1.1 — 2026-10-11
+
+### Fixed
+
+- The sidebar's row counts show `~`, as the grid header already did, so the estimate is visible without hovering.
+- MySQL `tinyint(1)` booleans display as `true` / `false` in the grid, as Postgres booleans do. Any other value in
+  such a column still shows as it is.
+- A configured connection label in the toolbar pill uses the UI font; only the database-name fallback is monospace.
+
 ## v1.1.0 — 2026-10-11
 
 ### Added

@@ -184,6 +184,7 @@ export function Sidebar({
                                   })
                             }
                           >
+                            {table.type !== 'view' && table.rowCount > 0 && '~'}
                             {compactCount(table.rowCount)}
                           </span>
                         </button>
